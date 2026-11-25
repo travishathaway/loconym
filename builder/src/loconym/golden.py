@@ -1,6 +1,6 @@
 """Generate golden vectors + a database so the TypeScript client can be checked against the Python reference.
 
-  logator-golden NAME PBF OUTDIR
+  loconym-golden NAME PBF OUTDIR
 Writes OUTDIR/NAME.sqlite and OUTDIR/NAME.golden.json (normalizer, codec and query expectations).
 """
 import argparse
@@ -11,7 +11,7 @@ from pathlib import Path
 from .build import build
 from .codec import Cell, StreetNumbers, encode_housenumbers, encode_leaf, encode_postings, lonlat_tile, tile_bounds
 from .codec import decode_housenumbers as _dhn
-from .reader import Gator
+from .reader import Loconym
 
 NORMALIZER_CASES = [
     "Rue Grimaldi", "Hauptstraße", "Hauptstr.", "HAUPTSTR", "Str", "Am Wall 12a", "Église-Saint-Étienne",
@@ -82,11 +82,11 @@ def make(name: str, pbf: str, outdir: str, n_queries: int = 150, seed: int = 11)
     golden["housenumbers"] = hn
     ids = sorted(rng.sample(range(1, 3_000_000), 50))
     golden["postings"] = {"hex": encode_postings(ids).hex(), "ids": ids}
-    golden["cell_keys"] = [[x, y, z, __import__("logator.codec", fromlist=["cell_key"]).cell_key(x, y, z)]
+    golden["cell_keys"] = [[x, y, z, __import__("loconym.codec", fromlist=["cell_key"]).cell_key(x, y, z)]
                            for x, y, z in [(0, 0, 1), (5, 9, 16), (34567, 21000, 16), (200000, 100000, 19), (3, 2, 12)]]
 
     # query expectations from a real DB
-    g = Gator.open(db_path)
+    g = Loconym.open(db_path)
     names = dict(g.db.execute("SELECT id, name FROM street"))
     cities = dict(g.db.execute("SELECT id, name FROM admin"))
     parents = dict(g.db.execute("SELECT id, parent FROM street"))
@@ -134,7 +134,7 @@ def make(name: str, pbf: str, outdir: str, n_queries: int = 150, seed: int = 11)
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="logator-golden")
+    p = argparse.ArgumentParser(prog="loconym-golden")
     p.add_argument("name")
     p.add_argument("pbf")
     p.add_argument("outdir")

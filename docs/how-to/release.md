@@ -4,8 +4,8 @@ The Python CLI and the TypeScript client are versioned and released independentl
 
 | Package | Version lives in | Tag | Workflow |
 |---|---|---|---|
-| `logator` on PyPI | `builder/src/logator/__init__.py` (`__version__`) | `py-vX.Y.Z` | `wheel.yml` |
-| `@thath/logator` on npm | `client/package.json` (`version`) | `js-vX.Y.Z` | `npm-publish.yml` |
+| `loconym` on PyPI | `builder/src/loconym/__init__.py` (`__version__`) | `py-vX.Y.Z` | `wheel.yml` |
+| `loconym` on npm | `client/package.json` (`version`) | `js-vX.Y.Z` | `npm-publish.yml` |
 
 Both workflows fail early if the tag doesn't match the version in the package.
 
@@ -13,8 +13,8 @@ Both workflows fail early if the tag doesn't match the version in the package.
 
 ### PyPI (trusted publishing)
 
-1. On PyPI, go to **Your account → Publishing → Add a new pending publisher** and enter: project `logator`, owner
-   `travishathaway`, repository `logator`, workflow `wheel.yml`, environment `pypi`.
+1. On PyPI, go to **Your account → Publishing → Add a new pending publisher** and enter: project `loconym`, owner
+   `travishathaway`, repository `loconym`, workflow `wheel.yml`, environment `pypi`.
 2. In the GitHub repository, create an environment named `pypi` (**Settings → Environments**). You can add required
    reviewers to gate releases.
 
@@ -29,7 +29,7 @@ token:
 2. Create a GitHub environment named `npm`.
 3. Publish the first version (see below).
 4. On npmjs.com, open the package's **Settings → Trusted publishing**, add GitHub Actions with repository
-   `travishathaway/logator`, workflow `npm-publish.yml` and environment `npm`. Then delete the `NPM_TOKEN` secret.
+   `travishathaway/loconym`, workflow `npm-publish.yml` and environment `npm`. Then delete the `NPM_TOKEN` secret.
 
 Packages are published with [provenance](https://docs.npmjs.com/generating-provenance-statements).
 
@@ -40,7 +40,7 @@ In **Settings → Pages**, set **Source** to **GitHub Actions**. `docs.yml` depl
 ## Release the Python CLI
 
 ```sh
-# 1. bump __version__ in builder/src/logator/__init__.py, e.g. to 0.1.0, and commit
+# 1. bump __version__ in builder/src/loconym/__init__.py, e.g. to 0.1.0, and commit
 # 2. tag and push
 git tag py-v0.1.0
 git push origin py-v0.1.0

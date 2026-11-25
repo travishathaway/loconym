@@ -1,4 +1,4 @@
-from logator.normalize import normalize_key, normalize_tokens
+from loconym.normalize import normalize_key, normalize_tokens
 
 
 def test_basic():

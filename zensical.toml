@@ -1,11 +1,11 @@
 [project]
-site_name = "logator"
+site_name = "loconym"
 site_description = "Offline reverse and forward geocoding from a single compact SQLite file built from OpenStreetMap data."
-site_url = "https://travishathaway.github.io/logator/"
-repo_url = "https://github.com/travishathaway/logator"
-repo_name = "travishathaway/logator"
+site_url = "https://travishathaway.github.io/loconym/"
+repo_url = "https://github.com/travishathaway/loconym"
+repo_name = "travishathaway/loconym"
 edit_uri = "edit/main/docs/"
-copyright = "Code: GPL-3.0-or-later · Data © OpenStreetMap contributors (ODbL) · Logo derived from Twemoji (CC-BY 4.0) and Noto Emoji (Apache-2.0)"
+copyright = "Code: MIT · Data © OpenStreetMap contributors (ODbL) · Logo derived from Twemoji (CC-BY 4.0) and Noto Emoji (Apache-2.0)"
 docs_dir = "docs"
 site_dir = "site"
 extra_css = ["stylesheets/extra.css"]
@@ -51,8 +51,8 @@ nav = [
 ]
 
 [project.theme]
-logo = "assets/logo/svg/logator-medium.svg"
-favicon = "assets/logo/png/logator-small-16.png"
+logo = "assets/logo/svg/loconym-medium.svg"
+favicon = "assets/logo/png/loconym-small-16.png"
 language = "en"
 features = [
   "navigation.tabs",

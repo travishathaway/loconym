@@ -1,11 +1,11 @@
 # Check a database's quality and query cost
 
-`logator-bench` samples addresses from a built database, queries them back with the Python reference reader, and
+`loconym-bench` samples addresses from a built database, queries them back with the Python reference reader, and
 reports how often the right answer comes back and how many 4 KiB pages each query reads. Use it after changing build
 options, or to estimate range-mode traffic before you deploy.
 
 ```sh
-logator-bench monaco.sqlite --n 50
+loconym-bench monaco.sqlite --n 50
 ```
 
 ```text

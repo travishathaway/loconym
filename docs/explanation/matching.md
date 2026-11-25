@@ -26,7 +26,7 @@ covered by golden vectors.
 
 ## Streets and cities
 
-logator's unit of search is a **street**: all OSM ways with the same normalized name inside the same city-level
+loconym's unit of search is a **street**: all OSM ways with the same normalized name inside the same city-level
 admin area (OSM `admin_level` 8 by default, the municipality in Germany). A "Hauptstraße" in two different towns is
 two streets, and one made of fifteen ways is one.
 

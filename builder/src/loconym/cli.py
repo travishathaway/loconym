@@ -5,7 +5,7 @@ from .build import build
 
 
 def main(argv=None) -> None:
-    p = argparse.ArgumentParser(prog="logator")
+    p = argparse.ArgumentParser(prog="loconym")
     sub = p.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build", help="Build a database from an .osm.pbf")
     b.add_argument("input")

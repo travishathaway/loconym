@@ -1,12 +1,12 @@
-<p align="center"><img src="docs/assets/logo/svg/logator-large.svg" alt="logator" width="140"></p>
+<p align="center"><img src="docs/assets/logo/svg/loconym-large.svg" alt="loconym" width="300"></p>
 
-# logator
+# loconym
 
-[![CI](https://github.com/travishathaway/logator/actions/workflows/ci.yml/badge.svg)](https://github.com/travishathaway/logator/actions/workflows/ci.yml)
-[![Wheel](https://github.com/travishathaway/logator/actions/workflows/wheel.yml/badge.svg)](https://github.com/travishathaway/logator/actions/workflows/wheel.yml)
-[![PyPI](https://img.shields.io/pypi/v/logator)](https://pypi.org/project/logator/)
-[![npm](https://img.shields.io/npm/v/@thath/logator)](https://www.npmjs.com/package/@thath/logator)
-[![Docs](https://img.shields.io/badge/docs-travishathaway.github.io%2Flogator-70853C)](https://travishathaway.github.io/logator/)
+[![CI](https://github.com/travishathaway/loconym/actions/workflows/ci.yml/badge.svg)](https://github.com/travishathaway/loconym/actions/workflows/ci.yml)
+[![Wheel](https://github.com/travishathaway/loconym/actions/workflows/wheel.yml/badge.svg)](https://github.com/travishathaway/loconym/actions/workflows/wheel.yml)
+[![PyPI](https://img.shields.io/pypi/v/loconym)](https://pypi.org/project/loconym/)
+[![npm](https://img.shields.io/npm/v/loconym)](https://www.npmjs.com/package/loconym)
+[![Docs](https://img.shields.io/badge/docs-travishathaway.github.io%2Floconym-70853C)](https://travishathaway.github.io/loconym/)
 
 Offline geocoding from a single compact SQLite file built from an `.osm.pbf`:
 
@@ -16,43 +16,43 @@ Offline geocoding from a single compact SQLite file built from an `.osm.pbf`:
 A Python **builder** creates the database; a TypeScript **client** queries it in the browser, either by downloading the
 file or by reading only the pages it needs with HTTP range requests. No server, no API keys.
 
-**Documentation: <https://travishathaway.github.io/logator/>**
+**Documentation: <https://travishathaway.github.io/loconym/>**
 
 ```
-builder/   Python CLI + reference reader + benchmarks   (PyPI: logator)
-client/    TypeScript API                                (npm: @thath/logator)
+builder/   Python CLI + reference reader + benchmarks   (PyPI: loconym)
+client/    TypeScript API                                (npm: loconym)
 examples/  browser-demo: full example app (Vite + MapLibre + Bootstrap, range/fetch, Berlin/Monaco)
            berlin-map: the small demo on the docs home page
 docs/      documentation website (Zensical), incl. the format spec: docs/reference/format-spec.md
 fixtures/  Geofabrik extracts (git-ignored), golden test vectors (monaco committed, bremen generated)
 ```
 
-Data © OpenStreetMap contributors (ODbL). License: GPL-3.0-or-later.
+Data © OpenStreetMap contributors (ODbL). License: MIT.
 
 ## Install
 
 ```sh
-pip install logator              # CLI: logator build
-npm install @thath/logator       # browser client
+pip install loconym              # CLI: loconym build
+npm install loconym       # browser client
 ```
 
 ## Usage
 
 ```sh
-logator build monaco-latest.osm.pbf -o monaco.sqlite
+loconym build monaco-latest.osm.pbf -o monaco.sqlite
 ```
 
 ```ts
-import { Logator } from '@thath/logator';
+import { Loconym } from 'loconym';
 
-const gator = await Logator.open({ url: '/data/bremen.sqlite', mode: 'range' }); // or 'fetch'
+const geocoder = await Loconym.open({ url: '/data/bremen.sqlite', mode: 'range' }); // or 'fetch'
 
-const r = await gator.reverse({ lat: 53.0758, lon: 8.8072 });
+const r = await geocoder.reverse({ lat: 53.0758, lon: 8.8072 });
 // { display_name, address: { house_number, road, suburb, city, state, country }, lat, lon, kind, place_rank, ... }
 
-const hits = await gator.search({ q: 'Am Wall 1, Bremen', limit: 5 });
+const hits = await geocoder.search({ q: 'Am Wall 1, Bremen', limit: 5 });
 // [{ display_name, lat, lon, housenumber, interpolated?, score, ... }]
-const hits2 = await gator.search({ street: 'Am Wall', city: 'Bremen' });   // structured
+const hits2 = await geocoder.search({ street: 'Am Wall', city: 'Bremen' });   // structured
 ```
 
 - `mode: 'range'` needs a cross-origin-isolated page (`Cross-Origin-Opener-Policy: same-origin` and
@@ -61,7 +61,7 @@ const hits2 = await gator.search({ street: 'Am Wall', city: 'Bremen' });   // st
 - `mode: 'fetch'` downloads the file once; best for small bundled databases.
 - `search`/`reverse` throw `CapabilityError` when the database was built without them (`--search none`).
 
-See the [tutorial](https://travishathaway.github.io/logator/tutorials/first-geocoder/) for a complete walkthrough.
+See the [tutorial](https://travishathaway.github.io/loconym/tutorials/first-geocoder/) for a complete walkthrough.
 
 ## Development
 
@@ -85,7 +85,7 @@ pixi run example-dev       # http://localhost:5173
 ```
 
 Releases: tag `py-vX.Y.Z` publishes the CLI to PyPI, `js-vX.Y.Z` publishes the client to npm. See
-[Publish a release](https://travishathaway.github.io/logator/how-to/release/).
+[Publish a release](https://travishathaway.github.io/loconym/how-to/release/).
 
 ## Status
 

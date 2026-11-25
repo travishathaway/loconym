@@ -1,4 +1,4 @@
-/** Text normalizer. Spec: docs/format-spec.md section 6; must match builder/src/logator/normalize.py. */
+/** Text normalizer. Spec: docs/format-spec.md section 6; must match builder/src/loconym/normalize.py. */
 export const NORMALIZER_VERSION = '1';
 
 export function normalizeTokens(input: string): string[] {

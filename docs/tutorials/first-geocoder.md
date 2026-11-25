@@ -1,7 +1,7 @@
 # Build your first offline geocoder
 
 In this tutorial you will build a geocoding database for Monaco and query it from a web page, with no server and no
-API keys. Along the way you will use both halves of logator: the **Python CLI** that builds databases and the
+API keys. Along the way you will use both halves of loconym: the **Python CLI** that builds databases and the
 **TypeScript client** that queries them.
 
 You will need Python 3.11 or newer and Node.js 22 or newer. Plan for about 15 minutes.
@@ -9,15 +9,15 @@ You will need Python 3.11 or newer and Node.js 22 or newer. Plan for about 15 mi
 ## 1. Install the CLI
 
 ```sh
-pip install logator
-logator --help
+pip install loconym
+loconym --help
 ```
 
-You should see `usage: logator [-h] {build} ...`.
+You should see `usage: loconym [-h] {build} ...`.
 
 ## 2. Download some OpenStreetMap data
 
-logator builds from `.osm.pbf` extracts. [Geofabrik](https://download.geofabrik.de/) publishes them for every
+loconym builds from `.osm.pbf` extracts. [Geofabrik](https://download.geofabrik.de/) publishes them for every
 country and region. Monaco is tiny (under 1 MB), which makes it a good first dataset:
 
 ```sh
@@ -27,7 +27,7 @@ curl -LO https://download.geofabrik.de/europe/monaco-latest.osm.pbf
 ## 3. Build the database
 
 ```sh
-logator build monaco-latest.osm.pbf -o monaco.sqlite
+loconym build monaco-latest.osm.pbf -o monaco.sqlite
 ```
 
 The builder reads the file twice: once for administrative boundaries, once for streets and addresses. Then it writes
@@ -48,7 +48,7 @@ Make a new Vite project and add the client:
 npm create vite@latest my-geocoder -- --template vanilla-ts
 cd my-geocoder
 npm install
-npm install @thath/logator
+npm install loconym
 ```
 
 Put the database where Vite serves static files:
@@ -89,21 +89,21 @@ Replace `index.html` with a search box and an output area:
 Replace `src/main.ts`:
 
 ```ts title="src/main.ts"
-import { Logator } from '@thath/logator';
+import { Loconym } from 'loconym';
 
 const out = document.getElementById('out')!;
 const input = document.getElementById('q') as HTMLInputElement;
 
 // 'fetch' mode downloads the whole file once, which suits a small database like this one.
-const gator = await Logator.open({ url: '/data/monaco.sqlite', mode: 'fetch' });
+const geocoder = await Loconym.open({ url: '/data/monaco.sqlite', mode: 'fetch' });
 
 // Reverse geocoding: coordinates -> address
-const place = await gator.reverse({ lat: 43.7384, lon: 7.4246 });
+const place = await geocoder.reverse({ lat: 43.7384, lon: 7.4246 });
 out.textContent = `Reverse: ${place?.display_name}\n`;
 
 // Search: address -> coordinates, on every keystroke
 input.addEventListener('input', async () => {
-  const hits = await gator.search({ q: input.value, limit: 5 });
+  const hits = await geocoder.search({ q: input.value, limit: 5 });
   out.textContent = hits.map((h) => `${h.display_name}  (${h.lat.toFixed(5)}, ${h.lon.toFixed(5)})`).join('\n');
 });
 ```
@@ -131,8 +131,8 @@ Try typing only `grim`. Search matches prefixes of the last word, so you get `Ru
 
 ## What you did
 
-- You built a self-contained geocoding database from raw OpenStreetMap data with `logator build`.
-- You queried it in the browser with `Logator.open`, `reverse` and `search`. Nothing left your machine except the
+- You built a self-contained geocoding database from raw OpenStreetMap data with `loconym build`.
+- You queried it in the browser with `Loconym.open`, `reverse` and `search`. Nothing left your machine except the
   page's request for `monaco.sqlite`.
 
 ## Next steps
@@ -140,4 +140,4 @@ Try typing only `grim`. Search matches prefixes of the last word, so you get `Ru
 - For larger regions, don't download the whole file: [serve it with HTTP range requests](../how-to/range-requests.md).
 - Turn the search box into proper [address autocomplete](../how-to/autocomplete.md).
 - Look up every option in the [TypeScript API reference](../reference/typescript-api.md).
-- Read [how logator works](../explanation/architecture.md).
+- Read [how loconym works](../explanation/architecture.md).

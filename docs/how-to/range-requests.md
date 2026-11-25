@@ -106,21 +106,21 @@ to the page and scripts only.
 ## 3. Open it in range mode
 
 ```ts
-import { Logator } from '@thath/logator';
+import { Loconym } from 'loconym';
 
-const gator = await Logator.open({
+const geocoder = await Loconym.open({
   url: 'https://example.com/data/bremen.sqlite',
   mode: 'range',
   range: { cacheSizeKiB: 4096 }, // optional, see the reference
 });
 ```
 
-If the page isn't isolated, `Logator.open` throws an error that names the two headers. You can fall back to fetch
+If the page isn't isolated, `Loconym.open` throws an error that names the two headers. You can fall back to fetch
 mode:
 
 ```ts
 const mode = self.crossOriginIsolated ? 'range' : 'fetch';
-const gator = await Logator.open({ url, mode });
+const geocoder = await Loconym.open({ url, mode });
 ```
 
 See [`OpenOptions`](../reference/typescript-api.md#openoptions) for the tuning options.

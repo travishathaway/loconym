@@ -5736,7 +5736,7 @@ packages:
   size: 433687
   timestamp: 1786599629846
 - pypi: ./builder
-  name: logator
+  name: loconym
   requires_dist:
   - apsw>=3.54.1.0,<4
   - osmium>=4

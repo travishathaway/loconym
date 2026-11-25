@@ -2,7 +2,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import maplibregl, { type GeoJSONSource, type GeoJSONSourceSpecification } from 'maplibre-gl';
-import { Logator, type ReverseResult, type SearchResult } from '@thath/logator';
+import { Loconym, type ReverseResult, type SearchResult } from 'loconym';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const dbSel = $<HTMLSelectElement>('db');
@@ -35,7 +35,7 @@ map.addControl(new maplibregl.NavigationControl(), 'top-right');
 const marker = new maplibregl.Marker({ color: '#70853C' });
 const mapReady = new Promise<void>((resolve) => map.once('load', () => resolve()));
 
-let gator: Logator | null = null;
+let geocoder: Loconym | null = null;
 let searchSeq = 0;
 let openSeq = 0;
 
@@ -94,19 +94,19 @@ async function open() {
   detailEl.hidden = true;
   marker.remove();
   setStatus('Opening database…');
-  await gator?.close();
-  gator = null;
+  await geocoder?.close();
+  geocoder = null;
   const url = new URL(`data/${dbSel.value}.sqlite`, document.baseURI).href;
   const t0 = performance.now();
-  let g: Logator;
+  let g: Loconym;
   try {
-    g = await Logator.open({ url, mode: modeSel.value as 'range' | 'fetch' });
+    g = await Loconym.open({ url, mode: modeSel.value as 'range' | 'fetch' });
   } catch (e) {
     if (seq === openSeq) setStatus(`Failed to open database: ${(e as Error).message}. Run "pixi run example-data" first.`);
     return;
   }
   if (seq !== openSeq) return void g.close(); // the user switched again while this one was opening
-  gator = g;
+  geocoder = g;
   await showCoverage(g.meta.bbox.split(',').map(Number));
   qInput.disabled = false;
   qInput.placeholder = PLACEHOLDER[dbSel.value];
@@ -114,9 +114,9 @@ async function open() {
 }
 
 map.on('click', async (ev) => {
-  if (!gator) return;
+  if (!geocoder) return;
   const t0 = performance.now();
-  const r: ReverseResult | null = await gator.reverse({ lat: ev.lngLat.lat, lon: ev.lngLat.lng, zoom: 18 });
+  const r: ReverseResult | null = await geocoder.reverse({ lat: ev.lngLat.lat, lon: ev.lngLat.lng, zoom: 18 });
   const ms = Math.round(performance.now() - t0);
   if (!r) {
     setStatus(`No data at this point (${ms} ms). Click inside the dashed area.`);
@@ -163,10 +163,10 @@ qInput.addEventListener('input', () => {
   window.clearTimeout(timer);
   timer = window.setTimeout(async () => {
     const q = qInput.value.trim();
-    if (!gator || q.length < 2) return renderResults([]);
+    if (!geocoder || q.length < 2) return renderResults([]);
     const seq = ++searchSeq;
     const t0 = performance.now();
-    const items = await gator.search({ q, limit: 6 });
+    const items = await geocoder.search({ q, limit: 6 });
     if (seq !== searchSeq) return;
     renderResults(items);
     setStatus(`${items.length} result${items.length === 1 ? '' : 's'} in ${Math.round(performance.now() - t0)} ms`);

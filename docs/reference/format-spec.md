@@ -2,7 +2,7 @@
 title: Database format
 ---
 
-# logator database format — v0 (draft)
+# loconym database format — v0 (draft)
 
 The contract between `builder/` (writes) and `client/` (reads). Derived from the Monaco, Bremen and Hessen spikes ([Measurements and design notes](spike-notes.md)). Anything marked **[measure]** is a hypothesis to validate with the real builder.
 

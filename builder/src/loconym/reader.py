@@ -51,7 +51,7 @@ def _seg_dist(px, py, a, b, lat):
     return math.hypot(px - qx, py - qy), qx / cx, qy / cy
 
 
-class Gator:
+class Loconym:
     def __init__(self, db):
         self.db = db
         self.meta = dict(db.execute("SELECT k, v FROM meta"))

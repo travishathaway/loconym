@@ -1,8 +1,17 @@
-/* logator brand colors, taken from the logo:
+/* loconym brand colors, taken from the logo:
      gator green  #70853C  (body)      -> primary
      highlight    #97A927  (scales)    -> accent, links in dark mode
      dark green   #5A6415  (ridges)    -> links in light mode (6.4:1 on white; #70853C alone is 4.1:1)
    The header and tab bar are black. */
+
+/* Space Mono Bold (SIL OFL 1.1, see assets/fonts/OFL.txt), self-hosted and subset to Latin-1 */
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/SpaceMono-Bold.woff2") format("woff2");
+}
 
 :root > * {
   --md-primary-fg-color: #70853c;
@@ -12,7 +21,22 @@
   --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
   --md-accent-fg-color: #97a927;
   --md-accent-fg-color--transparent: rgba(151, 169, 39, 0.1);
-  --logator-navbar: #000000;
+  --loconym-navbar: #000000;
+  --loconym-heading-font: "Space Mono", var(--md-code-font-family, ui-monospace), monospace;
+}
+
+/* headings and the site name in the navbar use Space Mono Bold */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6,
+.md-header__title,
+.md-nav--primary .md-nav__title[for="__drawer"] {
+  font-family: var(--loconym-heading-font);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 [data-md-color-scheme="default"] {
@@ -27,14 +51,14 @@
 /* black navbar + navigation tabs */
 .md-header,
 .md-tabs {
-  background-color: var(--logator-navbar);
+  background-color: var(--loconym-navbar);
   color: #ffffff;
 }
 
 /* the drawer header on small screens uses the primary color by default */
 .md-nav__source,
 .md-nav--primary .md-nav__title[for="__drawer"] {
-  background-color: var(--logator-navbar);
+  background-color: var(--loconym-navbar);
   color: #ffffff;
 }
 
@@ -65,17 +89,17 @@
 }
 
 /* home page hero */
-.logator-hero {
+.loconym-hero {
   text-align: center;
   margin: 1rem 0 2rem;
 }
-.logator-hero img {
-  width: 160px;
+.loconym-hero img {
+  width: 250px;
   height: auto;
 }
 
 /* home page demo (examples/berlin-map, built into site/demo/) */
-.md-typeset .logator-demo {
+.md-typeset .loconym-demo {
   display: block;
   width: 100%;
   height: 480px;
@@ -83,13 +107,13 @@
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 0.4rem;
 }
-.md-typeset .logator-demo-caption {
+.md-typeset .loconym-demo-caption {
   margin-top: 0;
   font-size: 0.7rem;
   color: var(--md-default-fg-color--light);
 }
 @media screen and (max-width: 44.9375em) {
-  .md-typeset .logator-demo {
+  .md-typeset .loconym-demo {
     height: 380px;
   }
 }

@@ -1,20 +1,20 @@
 # TypeScript API
 
-Package: [`@thath/logator`](https://www.npmjs.com/package/@thath/logator), ESM only, with type declarations.
+Package: [`loconym`](https://www.npmjs.com/package/loconym), ESM only, with type declarations.
 
 ```ts
-import { Logator, CapabilityError, normalizeTokens } from '@thath/logator';
+import { Loconym, CapabilityError, normalizeTokens } from 'loconym';
 import type {
   OpenOptions, ReverseOptions, ReverseResult, SearchOptions, SearchResult, AdminArea, Db,
-} from '@thath/logator';
+} from 'loconym';
 ```
 
-## `Logator`
+## `Loconym`
 
-### `Logator.open(options)`
+### `Loconym.open(options)`
 
 ```ts
-static open(options: OpenOptions): Promise<Logator>
+static open(options: OpenOptions): Promise<Loconym>
 ```
 
 Opens a database and reads its `meta` table. Rejects if:
@@ -34,7 +34,7 @@ Opens a database and reads its `meta` table. Rejects if:
 | `range.cacheSizeKiB` | `number` | `4096` | Range mode: size of the shared page cache, in KiB. |
 | `range.timeoutMs` | `number` | `20000` | Range mode: timeout for one HTTP request. |
 
-### `gator.reverse(options)`
+### `geocoder.reverse(options)`
 
 ```ts
 reverse(options: ReverseOptions): Promise<ReverseResult | null>
@@ -103,7 +103,7 @@ Example (Monaco):
 }
 ```
 
-### `gator.search(options)`
+### `geocoder.search(options)`
 
 ```ts
 search(options: SearchOptions | string): Promise<SearchResult[]>
@@ -137,7 +137,7 @@ matches no area. Throws `CapabilityError` if the database was built with `--sear
 | `interpolated` | `boolean \| undefined` | `true` if the position comes from an address interpolation line. |
 | `display_name` | `string` | Formatted, e.g. `"Avenue des Papalins 9, Monaco"`. |
 
-### `gator.capabilities`
+### `geocoder.capabilities`
 
 ```ts
 readonly capabilities: string[]
@@ -145,7 +145,7 @@ readonly capabilities: string[]
 
 What the database supports: some of `reverse`, `search`, `housenumber` and `interpolation`.
 
-### `gator.meta`
+### `geocoder.meta`
 
 ```ts
 readonly meta: Record<string, string>
@@ -154,7 +154,7 @@ readonly meta: Record<string, string>
 The database's `meta` table: `format_version`, `created_utc`, `source`, `bbox`, `attribution`, `city_level`, and
 others. See [meta keys](format-spec.md#meta-keys).
 
-### `gator.close()`
+### `geocoder.close()`
 
 ```ts
 close(): Promise<void>

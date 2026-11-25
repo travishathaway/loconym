@@ -88,7 +88,7 @@ function segDist(px: number, py: number, a: Pt, b: Pt, lat: number): [number, nu
 const splitWs = (s: string): string[] => s.split(/\s+/).filter(Boolean);
 const bytes = (v: unknown): Uint8Array => v as Uint8Array;
 
-export class Logator {
+export class Loconym {
   private constructor(
     private readonly db: Db,
     readonly meta: Record<string, string>,
@@ -101,13 +101,13 @@ export class Logator {
   private rootZoom: number;
   private caps: Set<string>;
 
-  static async open(opts: OpenOptions): Promise<Logator> {
+  static async open(opts: OpenOptions): Promise<Loconym> {
     const db = opts.mode === 'fetch' ? await openFetch(opts.url, opts.wasmUrl) : await openRange(opts.url, opts.range);
     try {
       const rows = await db.all('SELECT k, v FROM meta');
       const meta = Object.fromEntries(rows.map(([k, v]) => [String(k), String(v)]));
       if (Number(meta.format_version?.split('.')[0]) !== 0) throw new Error(`unsupported format version ${meta.format_version}`);
-      return new Logator(db, meta);
+      return new Loconym(db, meta);
     } catch (e) {
       await db.close();
       throw e;

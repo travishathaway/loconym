@@ -1,15 +1,15 @@
 {
-  "name": "@thath/logator",
+  "name": "loconym",
   "version": "0.0.1",
   "description": "Offline reverse and forward geocoding in the browser from a compact SQLite file",
-  "license": "GPL-3.0-or-later",
-  "homepage": "https://travishathaway.github.io/logator/",
+  "license": "MIT",
+  "homepage": "https://travishathaway.github.io/loconym/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/travishathaway/logator.git",
+    "url": "git+https://github.com/travishathaway/loconym.git",
     "directory": "client"
   },
-  "bugs": "https://github.com/travishathaway/logator/issues",
+  "bugs": "https://github.com/travishathaway/loconym/issues",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

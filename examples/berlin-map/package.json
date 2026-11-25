@@ -1,10 +1,10 @@
 {
-  "name": "logator-berlin-map",
+  "name": "loconym-berlin-map",
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "scripts": { "dev": "vite", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
-  "dependencies": { "maplibre-gl": "^5.6.0", "@thath/logator": "workspace:*" },
+  "dependencies": { "maplibre-gl": "^5.6.0", "loconym": "workspace:*" },
   "devDependencies": { "@types/node": "^22", "typescript": "^5", "vite": "^5" }
 }
