@@ -21,7 +21,8 @@ Cross-Origin-Embedder-Policy: require-corp
 ```
 
 With `require-corp`, every cross-origin resource the page loads (map tiles, fonts, images) must be served with CORS
-or `Cross-Origin-Resource-Policy: cross-origin`. For Leaflet tiles, set `crossOrigin: true` on the tile layer.
+or `Cross-Origin-Resource-Policy: cross-origin`. MapLibre GL already fetches styles, tiles, glyphs and sprites with
+CORS. With Leaflet, set `crossOrigin: true` on the tile layer.
 
 You can check isolation in the browser console: `self.crossOriginIsolated` must be `true`.
 
@@ -56,7 +57,7 @@ You can check isolation in the browser console: `self.crossOriginIsolated` must 
     });
     ```
 
-    This is the configuration used by `examples/browser-demo` in the repository.
+    This is the configuration used by the [example app](run-the-example.md) in `examples/browser-demo`.
 
 === "nginx"
 

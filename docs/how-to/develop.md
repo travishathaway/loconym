@@ -61,11 +61,24 @@ pixi run docs-build       # static site in site/
 Pages live in `docs/` and follow [Diátaxis](https://diataxis.fr/). Put each new page in the right section and add
 it to `nav` in `zensical.toml`.
 
-## Run the demo
+## Run the demos
+
+The repository has two browser demos. The full example app (`examples/browser-demo`) is covered in
+[Run the example app](run-the-example.md). The Berlin map demo (`examples/berlin-map`, MapLibre + the OpenFreeMap Bright basemap) is embedded on the home page
+of this website. It opens the database in `fetch` mode, so it runs on GitHub Pages without cross-origin isolation.
 
 ```sh
-pixi run demo-data        # needs fixtures/berlin/berlin.osm.pbf
+curl -L --create-dirs -o fixtures/berlin/berlin.osm.pbf https://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf
+pixi run demo-data        # builds examples/berlin-map/public/data/berlin.sqlite
 pixi run demo-dev         # http://localhost:5173
+```
+
+`pixi run docs-serve` doesn't include the demo, so the home page embed is empty there. To see the site as GitHub Pages
+serves it, build both and serve `site/`:
+
+```sh
+pixi run pages-build      # docs into site/, demo into site/demo/
+python -m http.server -d site
 ```
 
 ## Continuous integration
@@ -75,4 +88,4 @@ pixi run demo-dev         # http://localhost:5173
 | `ci.yml` | push to `main`, PRs | Lint, Python tests, Bremen golden vectors, client tests, demo build on Linux and macOS |
 | `wheel.yml` | push to `main`, PRs, `py-v*` tags | Builds the sdist and wheel, installs the wheel with plain pip on Python 3.11–3.14 and runs the tests against it; publishes on tags |
 | `npm-publish.yml` | `js-v*` tags, manual | Tests, builds and publishes the client to npm |
-| `docs.yml` | push to `main`, PRs | Builds this site; deploys it to GitHub Pages from `main` |
+| `docs.yml` | push to `main`, PRs | Builds the Berlin database, this site and the demo; deploys them to GitHub Pages from `main` |

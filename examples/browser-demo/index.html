@@ -4,21 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>logator demo</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <!-- follow the OS light/dark setting (Bootstrap color modes) -->
+    <script>
+      const dark = matchMedia('(prefers-color-scheme: dark)');
+      const setTheme = () => document.documentElement.setAttribute('data-bs-theme', dark.matches ? 'dark' : 'light');
+      setTheme();
+      dark.addEventListener('change', setTheme);
+    </script>
   </head>
   <body>
-    <aside id="panel">
-      <h1>logator</h1>
-      <p class="sub">Offline geocoding from one SQLite file. No server: the browser reads the database it needs.</p>
-      <div class="row">
-        <label>Region <select id="db"><option value="berlin">Berlin</option><option value="monaco">Monaco</option></select></label>
-        <label>Mode <select id="mode"><option value="range">HTTP range</option><option value="fetch">Full download</option></select></label>
+    <aside id="panel" class="d-flex flex-column gap-3 p-3 border-end bg-body">
+      <header>
+        <h1 class="h4 mb-1">logator</h1>
+        <p class="text-body-secondary small mb-0">
+          Offline geocoding from one SQLite file. No server: the browser reads the parts of the database it needs.
+        </p>
+      </header>
+
+      <div class="row g-2">
+        <div class="col">
+          <label for="db" class="form-label small text-body-secondary mb-1">Dataset</label>
+          <select id="db" class="form-select form-select-sm">
+            <option value="berlin">Berlin</option>
+            <option value="monaco">Monaco</option>
+          </select>
+        </div>
+        <div class="col">
+          <label for="mode" class="form-label small text-body-secondary mb-1">Data retrieval</label>
+          <select id="mode" class="form-select form-select-sm">
+            <option value="range">Range requests</option>
+            <option value="fetch">Full download</option>
+          </select>
+        </div>
       </div>
-      <input id="q" type="search" placeholder="Search an address, e.g. Unter den Linden 77, Berlin" autocomplete="off" disabled />
-      <ul id="results"></ul>
-      <section id="detail" hidden></section>
-      <p id="status" class="status">Loading…</p>
-      <p class="attrib">Data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (ODbL). Click the map to reverse geocode.</p>
+
+      <div>
+        <input id="q" type="search" class="form-control" placeholder="Search an address" autocomplete="off"
+          spellcheck="false" aria-label="Search an address" disabled />
+        <div id="results" class="list-group list-group-flush mt-2"></div>
+      </div>
+
+      <section id="detail" class="card" hidden>
+        <div class="card-body">
+          <h2 id="detail-title" class="card-title h6"></h2>
+          <dl id="detail-rows" class="row small mb-0"></dl>
+        </div>
+      </section>
+
+      <footer class="mt-auto small text-body-secondary">
+        <p id="status" class="mb-2" aria-live="polite">Loading…</p>
+        <p class="mb-0">
+          Click the map to reverse geocode. Data ©
+          <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (ODbL).
+          <a href="https://travishathaway.github.io/logator/how-to/run-the-example/">About this example</a>
+        </p>
+      </footer>
     </aside>
     <div id="map"></div>
     <script type="module" src="/src/main.ts"></script>

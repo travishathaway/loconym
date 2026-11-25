@@ -1,6 +1,7 @@
 name: Docs
 
-# Builds the Zensical site on every push/PR; deploys it to GitHub Pages from main.
+# Builds the Zensical site plus the Berlin map demo (examples/berlin-map, served at /demo/ and embedded on the home
+# page) on every push/PR; deploys it to GitHub Pages from main.
 # One-time setup: repository Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
 
 on:
@@ -18,17 +19,37 @@ concurrency:
 
 jobs:
   build:
-    name: Build docs
+    name: Build docs and demo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
+      # The demo's database is built from the Geofabrik Berlin extract. It is cached; bump the key to refresh it.
+      - name: Cache Berlin extract
+        uses: actions/cache@v6
+        with:
+          path: fixtures/berlin/berlin.osm.pbf
+          key: osm-extract-berlin-v1
+
+      - name: Download Berlin extract
+        run: |
+          if [ ! -s fixtures/berlin/berlin.osm.pbf ]; then
+            mkdir -p fixtures/berlin
+            curl -fsSL --retry 3 -o fixtures/berlin/berlin.osm.pbf \
+              https://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf
+          fi
+
       - uses: prefix-dev/setup-pixi@v0.11.3
         with:
-          environments: docs
+          environments: pages
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
-      - name: Build
-        run: pixi run -e docs docs-build
+      - name: Build the Berlin database
+        run: pixi run -e pages demo-data
+
+      - name: Build the docs and the demo
+        run: pixi run -e pages pages-build
 
       - uses: actions/upload-pages-artifact@v5
         with:

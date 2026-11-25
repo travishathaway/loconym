@@ -64,5 +64,8 @@ jobs:
       - name: TypeScript client tests
         run: pixi run client-test
 
-      - name: Build the client and the browser demo (typecheck)
+      - name: Build the client and the Berlin map demo (typecheck)
         run: pixi run demo-build
+
+      - name: Build the example app (typecheck)
+        run: pixi run example-build

@@ -21,7 +21,8 @@ file or by reading only the pages it needs with HTTP range requests. No server, 
 ```
 builder/   Python CLI + reference reader + benchmarks   (PyPI: logator)
 client/    TypeScript API                                (npm: @thath/logator)
-examples/  browser-demo (Vite + Leaflet)
+examples/  browser-demo: full example app (Vite + MapLibre + Bootstrap, range/fetch, Berlin/Monaco)
+           berlin-map: the small demo on the docs home page
 docs/      documentation website (Zensical), incl. the format spec: docs/reference/format-spec.md
 fixtures/  Geofabrik extracts (git-ignored), golden test vectors (monaco committed, bremen generated)
 ```
@@ -77,8 +78,10 @@ pixi run golden-data       # Bremen golden vectors for client-test
 pixi run client-test       # vitest: decoders + queries vs the Python reference, fetch and range modes
 pixi run lint              # ruff
 pixi run docs-serve        # documentation at http://localhost:8000
-pixi run demo-data         # builds Berlin + Monaco databases into the demo (needs fixtures/berlin/berlin.osm.pbf)
+pixi run demo-data         # builds the Berlin demo database (needs fixtures/berlin/berlin.osm.pbf)
 pixi run demo-dev          # http://localhost:5173
+pixi run example-data      # Berlin + Monaco databases for examples/browser-demo
+pixi run example-dev       # http://localhost:5173
 ```
 
 Releases: tag `py-vX.Y.Z` publishes the CLI to PyPI, `js-vX.Y.Z` publishes the client to npm. See

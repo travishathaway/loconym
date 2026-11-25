@@ -28,6 +28,7 @@ nav = [
     "how-to/large-extracts.md",
     "how-to/reverse-only.md",
     "how-to/benchmark.md",
+    "how-to/run-the-example.md",
     "how-to/develop.md",
     "how-to/release.md",
   ] },

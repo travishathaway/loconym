@@ -23,7 +23,8 @@ logator = { path = "builder", editable = true }
 [tasks]
 golden-data = { cmd = "python -m logator.golden bremen fixtures/bremen/bremen.osm.pbf fixtures/golden", description = "Regenerate the Bremen golden vectors (needs fixtures/bremen/bremen.osm.pbf)" }
 golden-monaco = { cmd = "python -m logator.golden monaco fixtures/monaco/monaco.osm.pbf fixtures/golden", description = "Regenerate the committed Monaco golden vectors" }
-demo-data = { cmd = "logator build fixtures/berlin/berlin.osm.pbf -o examples/browser-demo/public/data/berlin.sqlite && cp fixtures/golden/monaco.sqlite examples/browser-demo/public/data/", description = "Build the demo databases (needs fixtures/berlin/berlin.osm.pbf)" }
+demo-data = { cmd = "mkdir -p examples/berlin-map/public/data && logator build fixtures/berlin/berlin.osm.pbf -o examples/berlin-map/public/data/berlin.sqlite", description = "Build the Berlin demo database (needs fixtures/berlin/berlin.osm.pbf)" }
+example-data = { cmd = "mkdir -p examples/browser-demo/public/data && cp examples/berlin-map/public/data/berlin.sqlite fixtures/golden/monaco.sqlite examples/browser-demo/public/data/", depends-on = ["demo-data"], description = "Berlin + Monaco databases for the example app in examples/browser-demo" }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Development: Python tests and linting
@@ -37,7 +38,8 @@ test-builder = { cmd = "pytest builder/tests", description = "Python test suite"
 lint-builder = { cmd = "ruff check builder", description = "Lint the Python package" }
 
 # ---------------------------------------------------------------------------------------------------------------------
-# JavaScript toolchain: TypeScript client and browser demo
+# JavaScript toolchain: TypeScript client, the home page demo (examples/berlin-map) and the example app
+# (examples/browser-demo)
 # ---------------------------------------------------------------------------------------------------------------------
 [feature.js.dependencies]
 nodejs = ">=22"
@@ -47,8 +49,10 @@ pnpm = ">=9"
 client-install = "pnpm install"
 client-build = { cmd = "pnpm --filter @thath/logator run build", depends-on = ["client-install"], description = "Build the npm package into client/dist" }
 client-test = { cmd = "pnpm --filter @thath/logator run test", depends-on = ["client-install"], description = "Client test suite (vitest)" }
-demo-dev = { cmd = "pnpm --filter logator-browser-demo run dev", depends-on = ["client-build"] }
-demo-build = { cmd = "pnpm --filter logator-browser-demo run build", depends-on = ["client-build"] }
+demo-dev = { cmd = "pnpm --filter logator-berlin-map run dev", depends-on = ["client-build"], description = "Berlin map demo at http://localhost:5173" }
+demo-build = { cmd = "pnpm --filter logator-berlin-map run build", depends-on = ["client-build"], description = "Type-check and build the demo into examples/berlin-map/dist" }
+example-dev = { cmd = "pnpm --filter logator-browser-demo run dev", depends-on = ["client-build"], description = "Example app at http://localhost:5173 (cross-origin isolated, so range mode works)" }
+example-build = { cmd = "pnpm --filter logator-browser-demo run build", depends-on = ["client-build"], description = "Type-check and build the example app into examples/browser-demo/dist" }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Documentation website (Zensical)
@@ -60,6 +64,13 @@ zensical = ">=0.1.3"
 [feature.docs.tasks]
 docs-serve = { cmd = "zensical serve", description = "Live-reloading docs at http://localhost:8000" }
 docs-build = { cmd = "zensical build --clean", description = "Build the docs website into site/" }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# GitHub Pages: the docs website with the Berlin demo at site/demo/ (embedded on the home page)
+# ---------------------------------------------------------------------------------------------------------------------
+[feature.pages.tasks]
+# The demo is copied in after Zensical, because `zensical build --clean` empties site/.
+pages-build = { cmd = "rm -rf site/demo && cp -r examples/berlin-map/dist site/demo", depends-on = ["docs-build", "demo-build"], description = "Docs website + Berlin demo into site/ (run demo-data first)" }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Release: build and check the Python sdist + wheel
@@ -80,8 +91,10 @@ lint = { depends-on = ["lint-builder"] }
 
 [environments]
 # `pixi install` / `pixi run <task>`: everything, for local development.
-default = { features = ["dev", "js", "docs", "release", "all"], solve-group = "default" }
+default = { features = ["dev", "js", "docs", "pages", "release", "all"], solve-group = "default" }
 # Lean environments for CI jobs that need only one toolchain.
 docs = { features = ["docs"], no-default-feature = true }
 js = { features = ["js"], no-default-feature = true }
 release = { features = ["release"], no-default-feature = true }
+# GitHub Pages build: logator (to build the Berlin database), Node.js and Zensical.
+pages = { features = ["js", "docs", "pages"], solve-group = "default" }

@@ -14,6 +14,17 @@ description: Offline reverse and forward geocoding from a single compact SQLite 
 - **Reverse geocoding**: lat/lon → address (house number, street, suburb, city, state, country)
 - **Search**: address text → lat/lon, with type-ahead, house numbers and address interpolation
 
+<iframe class="logator-demo" src="demo/" title="logator demo: search Berlin addresses" loading="lazy"></iframe>
+<p class="logator-demo-caption">Search any address in Berlin. It runs entirely in your browser from one SQLite file,
+which downloads when you start. Source: <a href="https://github.com/travishathaway/logator/tree/main/examples/berlin-map"><code>examples/berlin-map</code></a>.</p>
+
+!!! tip "Try the full example app"
+
+    The [example app](https://github.com/travishathaway/logator/tree/main/examples/browser-demo) in the repository
+    goes further: it reads the database with HTTP range requests, switches between datasets and retrieval modes,
+    and reverse geocodes wherever you click.
+    [Run it yourself](how-to/run-the-example.md).
+
 logator has two parts that share one [file format](reference/format-spec.md):
 
 | | What it does | Install |
