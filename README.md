@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/assets/logo/svg/loconym-large.svg" alt="loconym" width="300"></p>
 
-# loconym
+<p align="center"><em>A local geocoder with an alligator mascot! </em></p>
 
 [![CI](https://github.com/travishathaway/loconym/actions/workflows/ci.yml/badge.svg)](https://github.com/travishathaway/loconym/actions/workflows/ci.yml)
 [![Wheel](https://github.com/travishathaway/loconym/actions/workflows/wheel.yml/badge.svg)](https://github.com/travishathaway/loconym/actions/workflows/wheel.yml)
@@ -84,8 +84,8 @@ pixi run example-data      # Berlin + Monaco databases for examples/browser-demo
 pixi run example-dev       # http://localhost:5173
 ```
 
-Releases: tag `py-vX.Y.Z` publishes the CLI to PyPI, `js-vX.Y.Z` publishes the client to npm. See
-[Publish a release](https://travishathaway.github.io/loconym/how-to/release/).
+Releases: publishing a GitHub release tagged `py-vX.Y.Z` publishes the CLI to PyPI; one tagged `js-vX.Y.Z` publishes
+the client to npm. See [Publish a release](https://travishathaway.github.io/loconym/how-to/release/).
 
 ## Status
 

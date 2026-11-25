@@ -10,7 +10,7 @@ h1 { display: none }
 <div class="loconym-hero" markdown>
 ![loconym logo](assets/logo/svg/loconym-large.svg)
 <div style="text-align: center">
-<em>A local geocoder with alligator mascot!</em>
+<em>A local geocoder with an alligator mascot!</em>
 </div>
 </div>
 

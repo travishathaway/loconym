@@ -86,8 +86,8 @@ python -m http.server -d site
 | Workflow | Runs | Does |
 |---|---|---|
 | `ci.yml` | push to `main`, PRs | Lint, Python tests, Bremen golden vectors, client tests, demo build on Linux and macOS |
-| `wheel.yml` | push to `main`, PRs, `py-v*` tags | Builds the sdist and wheel, installs the wheel with plain pip on Python 3.11–3.14 and runs the tests against it; publishes on tags |
-| `npm-publish.yml` | `js-v*` tags, manual | Tests, builds and publishes the client to npm |
+| `wheel.yml` | push to `main`, PRs, published `py-v*` releases | Builds the sdist and wheel, installs the wheel with plain pip on Python 3.11–3.14 and runs the tests against it; on a release, publishes to PyPI and attaches the files |
+| `npm-publish.yml` | published `js-v*` releases, manual (dry run) | Tests and builds the client, stages it on npm for approval, and attaches the tarball to the release |
 | `docs.yml` | push to `main`, PRs | Builds the Berlin database, this site and the demo; deploys them to GitHub Pages from `main` |
 | `cache-warm.yml` | every 5 days, manual | Restores the cached Geofabrik extracts so GitHub doesn't evict them after 7 days unused; on a miss, downloads and caches them |
 

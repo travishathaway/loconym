@@ -1,11 +1,14 @@
 name: npm
 
-# Pushing a tag `js-vX.Y.Z` tests, builds and publishes the TypeScript client (client/) to npm as loconym.
+# Publishing a GitHub release tagged `js-vX.Y.Z` tests and builds the TypeScript client (client/), stages it on npm as
+# loconym (`npm stage publish`), and attaches the package tarball to the release. A staged version is not installable
+# until a maintainer approves it on npmjs.com with 2FA. Releases with other tags (e.g. `py-v*`) are ignored here.
+# A release marked as a pre-release is staged under the `next` dist-tag, so `latest` doesn't move.
 # Run it manually (workflow_dispatch) for a dry run that shows exactly what would be published.
 
 on:
-  push:
-    tags: ["js-v*"]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       dry-run:
@@ -19,22 +22,25 @@ permissions:
 jobs:
   publish:
     name: Publish loconym
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'js-v')
     runs-on: ubuntu-latest
     environment:
       name: npm
       url: https://www.npmjs.com/package/loconym
     permissions:
-      contents: read
-      id-token: write  # npm trusted publishing (OIDC) and provenance
+      contents: write  # gh release upload
+      id-token: write  # npm trusted publishing (OIDC) and provenance (publishConfig.provenance in client/package.json)
     steps:
       - uses: actions/checkout@v7
 
-      - name: Check that the tag matches the package version
-        if: startsWith(github.ref, 'refs/tags/js-v')
+      - name: Check that the release tag matches the package version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           version=$(node -p "require('./client/package.json').version")
-          if [ "js-v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match client/package.json version $version"
+          if [ "js-v$version" != "$TAG" ]; then
+            echo "::error::release tag $TAG does not match client/package.json version $version"
             exit 1
           fi
 
@@ -48,18 +54,37 @@ jobs:
       - name: Build
         run: pixi run -e js client-build
 
-      - name: Publish
+      # Authenticates through trusted publishing (OIDC); there is no npm token. The trusted publisher on npmjs.com is
+      # stage-only, so this can only queue the version: it goes live once a maintainer approves it with 2FA.
+      - name: Stage on npm
+        working-directory: client
+        shell: bash  # -eo pipefail, so a failed `npm stage publish` isn't masked by `tee`
+        env:
+          DRY_RUN: ${{ inputs.dry-run && 'true' || 'false' }}
+          NPM_DIST_TAG: ${{ github.event.release.prerelease && 'next' || 'latest' }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            pixi run -e js npm publish --dry-run --tag "$NPM_DIST_TAG"
+          else
+            pixi run -e js npm stage publish --tag "$NPM_DIST_TAG" | tee "$RUNNER_TEMP/stage.log"
+            {
+              echo "### loconym staged on npm (dist-tag \`$NPM_DIST_TAG\`)"
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/stage.log"
+              echo '```'
+              echo
+              echo "Not installable yet: approve it on [npmjs.com](https://www.npmjs.com/package/loconym) under"
+              echo "**Staged Packages**, or run \`npm stage list loconym\` and \`npm stage approve <stage-id>\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Attach the package tarball to the release
+        if: github.event_name == 'release'
         working-directory: client
         env:
-          # Optional: only needed for the very first publish, before a trusted publisher is configured on npmjs.com.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          DRY_RUN: ${{ inputs.dry-run && 'true' || 'false' }}
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ -n "$NPM_TOKEN" ]; then
-            pixi run -e js npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN" --location=project
-          fi
-          if [ "$DRY_RUN" = "true" ]; then
-            pixi run -e js npm publish --dry-run
-          else
-            pixi run -e js npm publish
-          fi
+          tarball=$(pixi run -e js npm pack --silent | tail -n 1)
+          gh release upload "$TAG" "$tarball" --clobber --repo "$GITHUB_REPOSITORY"
