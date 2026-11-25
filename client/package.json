@@ -1,6 +1,6 @@
 {
   "name": "loconym",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Offline reverse and forward geocoding in the browser from a compact SQLite file",
   "license": "MIT",
   "homepage": "https://travishathaway.github.io/loconym/",
