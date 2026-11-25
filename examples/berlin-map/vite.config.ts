@@ -28,10 +28,10 @@ function dbMegabytes(): number | null {
 
 export default defineConfig({
   plugins: [moduleWorkers],
-  base: './', // served from /logator/demo/ on GitHub Pages
+  base: './', // served from /loconym/demo/ on GitHub Pages
   define: { __DB_MB__: JSON.stringify(dbMegabytes()) },
   // sqlite-wasm and its HTTP VFS load their own wasm/workers via import.meta.url; keep them out of dep pre-bundling
-  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm', 'sqlite-wasm-http', '@thath/logator'] },
+  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm', 'sqlite-wasm-http', 'loconym'] },
   worker: { format: 'es' },
   build: { target: 'es2022' },
 });

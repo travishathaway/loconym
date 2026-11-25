@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
-import type { Logator, SearchResult } from '@thath/logator';
+import type { Loconym, SearchResult } from 'loconym';
 
 declare const __DB_MB__: number | null;
 
@@ -33,13 +33,13 @@ try {
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 } catch (e) {
-  console.warn('logator demo: no map (WebGL unavailable?)', e);
+  console.warn('loconym demo: no map (WebGL unavailable?)', e);
   $('map').classList.add('no-map');
   $('map').textContent = 'The map needs WebGL, which this browser has turned off. Search still works.';
 }
 const marker = new maplibregl.Marker({ color: '#70853C' });
 
-let gator: Logator | null = null;
+let geocoder: Loconym | null = null;
 let loading: Promise<void> | null = null;
 let items: SearchResult[] = [];
 let active = -1;
@@ -57,8 +57,8 @@ function load(): Promise<void> {
     const t0 = performance.now();
     try {
       // loaded on demand: the client and SQLite wasm stay out of the page until the user asks for the demo
-      const { Logator } = await import('@thath/logator');
-      gator = await Logator.open({ url: new URL('data/berlin.sqlite', document.baseURI).href, mode: 'fetch' });
+      const { Loconym } = await import('loconym');
+      geocoder = await Loconym.open({ url: new URL('data/berlin.sqlite', document.baseURI).href, mode: 'fetch' });
     } catch (e) {
       statusEl.textContent = `Couldn't open the database: ${(e as Error).message}`;
       loadBtn.disabled = false;
@@ -67,7 +67,7 @@ function load(): Promise<void> {
     }
     loaderEl.hidden = true;
     qInput.focus();
-    console.info(`logator: Berlin database ready in ${Math.round(performance.now() - t0)} ms`);
+    console.info(`loconym: Berlin database ready in ${Math.round(performance.now() - t0)} ms`);
     if (qInput.value.trim()) void runSearch();
   })();
   return loading;
@@ -115,9 +115,9 @@ function render(results: SearchResult[]) {
 
 async function runSearch() {
   const q = qInput.value.trim();
-  if (!gator || q.length < 2) return render([]);
+  if (!geocoder || q.length < 2) return render([]);
   const seq = ++searchSeq;
-  const results = await gator.search({ q, limit: 6 });
+  const results = await geocoder.search({ q, limit: 6 });
   if (seq === searchSeq) render(results);
 }
 
@@ -170,7 +170,7 @@ async function pick(r: SearchResult) {
 
   // Search returns the street and city; reverse geocoding the point adds suburb, district, postcode and so on.
   const seq = ++pickSeq;
-  const rev = await gator?.reverse({ lat: r.lat, lon: r.lon });
+  const rev = await geocoder?.reverse({ lat: r.lat, lon: r.lon });
   if (!rev || seq !== pickSeq || detailsEl.hidden) return;
   // The nearest address may be on another street or have another number, so keep the picked result's own.
   const { house_number: _h, road: _r, ...area } = rev.address;

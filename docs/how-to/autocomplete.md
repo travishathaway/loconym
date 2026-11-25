@@ -7,9 +7,9 @@ map to the chosen result.
 ## Search as the user types
 
 ```ts
-import { Logator, type SearchResult } from '@thath/logator';
+import { Loconym, type SearchResult } from 'loconym';
 
-const gator = await Logator.open({ url: '/data/bremen.sqlite', mode: 'range' });
+const geocoder = await Loconym.open({ url: '/data/bremen.sqlite', mode: 'range' });
 const input = document.querySelector<HTMLInputElement>('#q')!;
 const list = document.querySelector<HTMLUListElement>('#results')!;
 
@@ -20,7 +20,7 @@ input.addEventListener('input', () => {
   clearTimeout(timer);
   timer = window.setTimeout(async () => {
     const mine = ++seq;
-    const hits = await gator.search({ q: input.value, limit: 8 });
+    const hits = await geocoder.search({ q: input.value, limit: 8 });
     if (mine !== seq) return; // a newer keystroke already started another search
     render(hits);
   }, 120);
@@ -51,13 +51,13 @@ sequence number makes sure an old, slow response never overwrites a newer one.
 What follows the **last comma** is treated as the place:
 
 ```ts
-await gator.search('Am Wall 1, Bremen');
+await geocoder.search('Am Wall 1, Bremen');
 ```
 
 If your UI has separate fields, pass them as structured parameters. The comma splitting is then skipped:
 
 ```ts
-await gator.search({ street: 'Am Wall 1', city: 'Bremen' });
+await geocoder.search({ street: 'Am Wall 1', city: 'Bremen' });
 ```
 
 ## Tune prefix matching
@@ -68,7 +68,7 @@ await gator.search({ street: 'Am Wall 1', city: 'Bremen' });
 - `limit` (default `5`): the number of results returned.
 
 ```ts
-await gator.search({ q: input.value, limit: 10, minPrefix: 4 });
+await geocoder.search({ q: input.value, limit: 10, minPrefix: 4 });
 ```
 
 ## Show house numbers

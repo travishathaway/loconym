@@ -1,10 +1,10 @@
 [workspace]
-name = "logator"
+name = "loconym"
 channels = ["conda-forge"]
 platforms = ["linux-aarch64", "linux-64", "osx-arm64", "osx-64"]
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Project (runtime) dependencies of the `logator` Python package, installed from conda-forge.
+# Project (runtime) dependencies of the `loconym` Python package, installed from conda-forge.
 # Keep this list in sync with [project.dependencies] in builder/pyproject.toml (conda name -> PyPI name):
 #   pyosmium -> osmium, shapely -> shapely, apsw -> apsw
 # ---------------------------------------------------------------------------------------------------------------------
@@ -13,17 +13,17 @@ python = ">=3.11"
 pyosmium = ">=4"
 shapely = ">=2"
 apsw = ">=3.54.1.0,<4"
-# Optional at runtime (not on PyPI): the `osmium` binary used by `logator build --prefilter` on large extracts.
+# Optional at runtime (not on PyPI): the `osmium` binary used by `loconym build --prefilter` on large extracts.
 osmium-tool = ">=1.19.1,<2"
 
 # The package itself, editable. Its PyPI dependencies are already satisfied by the conda packages above.
 [pypi-dependencies]
-logator = { path = "builder", editable = true }
+loconym = { path = "builder", editable = true }
 
 [tasks]
-golden-data = { cmd = "python -m logator.golden bremen fixtures/bremen/bremen.osm.pbf fixtures/golden", description = "Regenerate the Bremen golden vectors (needs fixtures/bremen/bremen.osm.pbf)" }
-golden-monaco = { cmd = "python -m logator.golden monaco fixtures/monaco/monaco.osm.pbf fixtures/golden", description = "Regenerate the committed Monaco golden vectors" }
-demo-data = { cmd = "mkdir -p examples/berlin-map/public/data && logator build fixtures/berlin/berlin.osm.pbf -o examples/berlin-map/public/data/berlin.sqlite", description = "Build the Berlin demo database (needs fixtures/berlin/berlin.osm.pbf)" }
+golden-data = { cmd = "python -m loconym.golden bremen fixtures/bremen/bremen.osm.pbf fixtures/golden", description = "Regenerate the Bremen golden vectors (needs fixtures/bremen/bremen.osm.pbf)" }
+golden-monaco = { cmd = "python -m loconym.golden monaco fixtures/monaco/monaco.osm.pbf fixtures/golden", description = "Regenerate the committed Monaco golden vectors" }
+demo-data = { cmd = "mkdir -p examples/berlin-map/public/data && loconym build fixtures/berlin/berlin.osm.pbf -o examples/berlin-map/public/data/berlin.sqlite", description = "Build the Berlin demo database (needs fixtures/berlin/berlin.osm.pbf)" }
 example-data = { cmd = "mkdir -p examples/browser-demo/public/data && cp examples/berlin-map/public/data/berlin.sqlite fixtures/golden/monaco.sqlite examples/browser-demo/public/data/", depends-on = ["demo-data"], description = "Berlin + Monaco databases for the example app in examples/browser-demo" }
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -47,12 +47,12 @@ pnpm = ">=9"
 
 [feature.js.tasks]
 client-install = "pnpm install"
-client-build = { cmd = "pnpm --filter @thath/logator run build", depends-on = ["client-install"], description = "Build the npm package into client/dist" }
-client-test = { cmd = "pnpm --filter @thath/logator run test", depends-on = ["client-install"], description = "Client test suite (vitest)" }
-demo-dev = { cmd = "pnpm --filter logator-berlin-map run dev", depends-on = ["client-build"], description = "Berlin map demo at http://localhost:5173" }
-demo-build = { cmd = "pnpm --filter logator-berlin-map run build", depends-on = ["client-build"], description = "Type-check and build the demo into examples/berlin-map/dist" }
-example-dev = { cmd = "pnpm --filter logator-browser-demo run dev", depends-on = ["client-build"], description = "Example app at http://localhost:5173 (cross-origin isolated, so range mode works)" }
-example-build = { cmd = "pnpm --filter logator-browser-demo run build", depends-on = ["client-build"], description = "Type-check and build the example app into examples/browser-demo/dist" }
+client-build = { cmd = "pnpm --filter loconym run build", depends-on = ["client-install"], description = "Build the npm package into client/dist" }
+client-test = { cmd = "pnpm --filter loconym run test", depends-on = ["client-install"], description = "Client test suite (vitest)" }
+demo-dev = { cmd = "pnpm --filter loconym-berlin-map run dev", depends-on = ["client-build"], description = "Berlin map demo at http://localhost:5173" }
+demo-build = { cmd = "pnpm --filter loconym-berlin-map run build", depends-on = ["client-build"], description = "Type-check and build the demo into examples/berlin-map/dist" }
+example-dev = { cmd = "pnpm --filter loconym-browser-demo run dev", depends-on = ["client-build"], description = "Example app at http://localhost:5173 (cross-origin isolated, so range mode works)" }
+example-build = { cmd = "pnpm --filter loconym-browser-demo run build", depends-on = ["client-build"], description = "Type-check and build the example app into examples/browser-demo/dist" }
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Documentation website (Zensical)
@@ -96,5 +96,5 @@ default = { features = ["dev", "js", "docs", "pages", "release", "all"], solve-g
 docs = { features = ["docs"], no-default-feature = true }
 js = { features = ["js"], no-default-feature = true }
 release = { features = ["release"], no-default-feature = true }
-# GitHub Pages build: logator (to build the Berlin database), Node.js and Zensical.
+# GitHub Pages build: loconym (to build the Berlin database), Node.js and Zensical.
 pages = { features = ["js", "docs", "pages"], solve-group = "default" }

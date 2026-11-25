@@ -5,7 +5,7 @@ the options that keep a large build within your machine's memory.
 
 ## Reference points
 
-Measured with `logator build` (see [Measurements and design notes](../reference/spike-notes.md#real-builder-results-2026-11-24)):
+Measured with `loconym build` (see [Measurements and design notes](../reference/spike-notes.md#real-builder-results-2026-11-24)):
 
 | Extract | Input | Output | Build time | Peak memory |
 |---|---|---|---|---|
@@ -31,7 +31,7 @@ osmium --version
 ## 2. Build
 
 ```sh
-logator build germany-latest.osm.pbf -o germany.sqlite
+loconym build germany-latest.osm.pbf -o germany.sqlite
 ```
 
 For inputs larger than 400 MiB, the defaults already:
@@ -42,7 +42,7 @@ For inputs larger than 400 MiB, the defaults already:
 To force either behaviour regardless of size:
 
 ```sh
-logator build input.osm.pbf -o out.sqlite --prefilter always --node-index disk
+loconym build input.osm.pbf -o out.sqlite --prefilter always --node-index disk
 ```
 
 `--prefilter always` fails with an error if osmium-tool isn't installed.

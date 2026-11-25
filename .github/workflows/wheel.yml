@@ -28,9 +28,9 @@ jobs:
       - name: Check that the tag matches the package version
         if: startsWith(github.ref, 'refs/tags/py-v')
         run: |
-          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' builder/src/logator/__init__.py)
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' builder/src/loconym/__init__.py)
           if [ "py-v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match builder/src/logator/__init__.py version $version"
+            echo "::error::tag $GITHUB_REF_NAME does not match builder/src/loconym/__init__.py version $version"
             exit 1
           fi
 
@@ -80,14 +80,14 @@ jobs:
         shell: bash
         run: |
           # make sure the tests import the installed package, not builder/src
-          python -c "import logator, sys; assert 'site-packages' in logator.__file__, logator.__file__; print(logator.__version__)"
+          python -c "import loconym, sys; assert 'site-packages' in loconym.__file__, loconym.__file__; print(loconym.__version__)"
           python -m pytest builder/tests -p no:cacheprovider
 
       - name: CLI smoke test
         shell: bash
         run: |
-          logator build fixtures/monaco/monaco.osm.pbf -o monaco.sqlite
-          logator-bench monaco.sqlite --n 20
+          loconym build fixtures/monaco/monaco.osm.pbf -o monaco.sqlite
+          loconym-bench monaco.sqlite --n 20
 
   publish:
     name: Publish to PyPI
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/logator
+      url: https://pypi.org/p/loconym
     permissions:
       id-token: write  # trusted publishing (OIDC), no API token needed
     steps:

@@ -1,6 +1,6 @@
 # Status and limitations
 
-logator is early software. The database format is **v0**: it may change incompatibly before 1.0. When it does, the
+loconym is early software. The database format is **v0**: it may change incompatibly before 1.0. When it does, the
 builder and the client are released together, and the client rejects databases with a format major version it
 doesn't know.
 

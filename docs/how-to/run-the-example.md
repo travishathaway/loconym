@@ -1,7 +1,7 @@
 # Run the example app
 
 The repository contains a complete browser app built on the TypeScript client:
-[`examples/browser-demo`](https://github.com/travishathaway/logator/tree/main/examples/browser-demo). It shows
+[`examples/browser-demo`](https://github.com/travishathaway/loconym/tree/main/examples/browser-demo). It shows
 address search with type-ahead, reverse geocoding on click, and both ways of reading the database: HTTP range
 requests and a full download. It's a good starting point for your own app.
 
@@ -24,9 +24,9 @@ curl -L --create-dirs -o fixtures/berlin/berlin.osm.pbf \
 pixi run example-data
 ```
 
-`example-data` runs `logator build` on the extract, which takes about a minute. It then copies `berlin.sqlite`
+`example-data` runs `loconym build` on the extract, which takes about a minute. It then copies `berlin.sqlite`
 (about 12 MB) and the committed `monaco.sqlite` fixture into `examples/browser-demo/public/data/`. Any database
-built with `logator build` works: put it in that folder and add an `<option>` to the dataset selector in
+built with `loconym build` works: put it in that folder and add an `<option>` to the dataset selector in
 `index.html`.
 
 ## 2. Start the app

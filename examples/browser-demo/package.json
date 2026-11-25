@@ -1,10 +1,10 @@
 {
-  "name": "logator-browser-demo",
+  "name": "loconym-browser-demo",
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "scripts": { "dev": "vite", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
-  "dependencies": { "@thath/logator": "workspace:*", "bootstrap": "^5.3.3", "maplibre-gl": "^5.6.0" },
+  "dependencies": { "loconym": "workspace:*", "bootstrap": "^5.3.3", "maplibre-gl": "^5.6.0" },
   "devDependencies": { "typescript": "^5", "vite": "^5" }
 }

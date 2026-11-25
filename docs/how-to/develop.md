@@ -6,8 +6,8 @@ conda-forge.
 ## Set up
 
 ```sh
-git clone https://github.com/travishathaway/logator.git
-cd logator
+git clone https://github.com/travishathaway/loconym.git
+cd loconym
 pixi install
 ```
 
@@ -16,7 +16,7 @@ into features:
 
 | Feature | Contents | Used for |
 |---|---|---|
-| *(default)* | `python`, `pyosmium`, `shapely`, `apsw`, `osmium-tool`, plus `logator` (editable) | Runtime of the Python package |
+| *(default)* | `python`, `pyosmium`, `shapely`, `apsw`, `osmium-tool`, plus `loconym` (editable) | Runtime of the Python package |
 | `dev` | `pytest`, `ruff` | Python tests and linting |
 | `js` | `nodejs`, `pnpm` | TypeScript client and browser demo |
 | `docs` | `zensical` | This website |
@@ -48,7 +48,7 @@ pixi run lint             # ruff
 pixi run demo-build       # type-checks and builds the client and the browser demo
 ```
 
-The client tests are parity tests. The Python builder writes golden vectors (`logator-golden`), and the TypeScript
+The client tests are parity tests. The Python builder writes golden vectors (`loconym-golden`), and the TypeScript
 client must reproduce the Python reference reader's results for every case.
 
 ## Work on the docs

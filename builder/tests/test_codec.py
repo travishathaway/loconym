@@ -1,6 +1,6 @@
 import random
 
-from logator.codec import (
+from loconym.codec import (
     Cell,
     StreetNumbers,
     cell_key,

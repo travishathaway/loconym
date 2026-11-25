@@ -1,6 +1,6 @@
 name: npm
 
-# Pushing a tag `js-vX.Y.Z` tests, builds and publishes the TypeScript client (client/) to npm as @thath/logator.
+# Pushing a tag `js-vX.Y.Z` tests, builds and publishes the TypeScript client (client/) to npm as loconym.
 # Run it manually (workflow_dispatch) for a dry run that shows exactly what would be published.
 
 on:
@@ -18,11 +18,11 @@ permissions:
 
 jobs:
   publish:
-    name: Publish @thath/logator
+    name: Publish loconym
     runs-on: ubuntu-latest
     environment:
       name: npm
-      url: https://www.npmjs.com/package/@thath/logator
+      url: https://www.npmjs.com/package/loconym
     permissions:
       contents: read
       id-token: write  # npm trusted publishing (OIDC) and provenance

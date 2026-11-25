@@ -3,11 +3,11 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "logator"
+name = "loconym"
 dynamic = ["version"]
 description = "Build compact, offline reverse and forward geocoding databases from OpenStreetMap PBF files"
 readme = "README.md"
-license = "GPL-3.0-or-later"
+license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 keywords = ["geocoding", "reverse-geocoding", "openstreetmap", "osm", "sqlite", "offline"]
@@ -30,27 +30,27 @@ dependencies = [
     "shapely>=2",           # admin polygon assembly, clipping, STRtree
     "apsw>=3.54.1.0,<4",    # SQLite with VFS hooks (page-read benchmarks)
 ]
-# Optional, not on PyPI: osmium-tool (`osmium` binary) enables `logator build --prefilter` for large extracts.
+# Optional, not on PyPI: osmium-tool (`osmium` binary) enables `loconym build --prefilter` for large extracts.
 
 [project.urls]
-Homepage = "https://travishathaway.github.io/logator/"
-Documentation = "https://travishathaway.github.io/logator/"
-Repository = "https://github.com/travishathaway/logator"
-Issues = "https://github.com/travishathaway/logator/issues"
+Homepage = "https://travishathaway.github.io/loconym/"
+Documentation = "https://travishathaway.github.io/loconym/"
+Repository = "https://github.com/travishathaway/loconym"
+Issues = "https://github.com/travishathaway/loconym/issues"
 
 [project.scripts]
-logator = "logator.cli:main"
-logator-bench = "logator.bench:main"
-logator-golden = "logator.golden:main"
+loconym = "loconym.cli:main"
+loconym-bench = "loconym.bench:main"
+loconym-golden = "loconym.golden:main"
 
 [tool.hatch.version]
-path = "src/logator/__init__.py"
+path = "src/loconym/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/logator"]
+packages = ["src/loconym"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/logator", "tests", "README.md", "LICENSE"]
+include = ["src/loconym", "tests", "README.md", "LICENSE"]
 
 [tool.ruff]
 line-length = 120
@@ -59,4 +59,4 @@ extend-exclude = ["spike"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["E741", "B905"]
-per-file-ignores = { "tests/*" = ["E501"], "src/logator/golden.py" = ["E501", "B015"] }
+per-file-ignores = { "tests/*" = ["E501"], "src/loconym/golden.py" = ["E501", "B015"] }

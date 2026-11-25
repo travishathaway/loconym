@@ -1,13 +1,13 @@
 # Command line
 
-The `logator` Python package installs three commands.
+The `loconym` Python package installs three commands.
 
-## `logator build`
+## `loconym build`
 
 Build a database from an OpenStreetMap `.osm.pbf` file.
 
 ```text
-logator build [-h] -o OUTPUT [--language LANGUAGE] [--city-level CITY_LEVEL]
+loconym build [-h] -o OUTPUT [--language LANGUAGE] [--city-level CITY_LEVEL]
               [--search {none,full}] [--max-leaf-bytes MAX_LEAF_BYTES] [--keep-scratch]
               [--prefilter {auto,always,never}] [--node-index {auto,memory,disk}]
               input
@@ -31,13 +31,13 @@ Progress goes to stderr. The last line summarizes the result:
 done: {'size': 110592, 'cells': 56, 'split_markers': 0, 'streets': 343, 'housenumbers': 452, 'admins': 11}
 ```
 
-## `logator-bench`
+## `loconym-bench`
 
 Measure a database's correctness and query cost with the Python reference reader. See
 [Check a database's quality and query cost](../how-to/benchmark.md) for how to read the output.
 
 ```text
-logator-bench [-h] [--n N] [--seed SEED] db
+loconym-bench [-h] [--n N] [--seed SEED] db
 ```
 
 | Argument | Default | Description |
@@ -46,13 +46,13 @@ logator-bench [-h] [--n N] [--seed SEED] db
 | `--n` | `300` | Number of sampled addresses per test. |
 | `--seed` | `7` | Random seed for sampling. |
 
-## `logator-golden`
+## `loconym-golden`
 
 Build a database and write golden test vectors that the TypeScript client's parity tests check against. This is a
 development tool. See [Set up a development environment](../how-to/develop.md).
 
 ```text
-logator-golden [-h] name pbf outdir
+loconym-golden [-h] name pbf outdir
 ```
 
 Writes `OUTDIR/NAME.sqlite` and `OUTDIR/NAME.golden.json`. The JSON holds normalizer cases, cell keys, encoded and

@@ -46,7 +46,7 @@ const mode = self.crossOriginIsolated && sizeMB > 5 ? 'range' : 'fetch';
 
 ## Why pages and not a custom API
 
-Because every logator query is a short B-tree walk, "SQLite over HTTP" behaves like a purpose-built geocoding API
+Because every loconym query is a short B-tree walk, "SQLite over HTTP" behaves like a purpose-built geocoding API
 without running one. The CDN serves byte ranges of an immutable file, which caches perfectly. The cost is that the
 file layout matters a lot: rows that are read together are stored next to each other (for example, street ids are
 assigned in city-then-name order). That is why the [format spec](../reference/format-spec.md) is strict about it.

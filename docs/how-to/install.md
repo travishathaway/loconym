@@ -5,13 +5,13 @@
 === "pip"
 
     ```sh
-    pip install logator
+    pip install loconym
     ```
 
 === "uv"
 
     ```sh
-    uv tool install logator
+    uv tool install loconym
     ```
 
 === "pixi / conda"
@@ -21,7 +21,7 @@
     ```sh
     pixi init my-project && cd my-project
     pixi add python pyosmium shapely apsw osmium-tool
-    pixi add --pypi logator
+    pixi add --pypi loconym
     ```
 
 The CLI needs Python 3.11 or newer. It depends on [pyosmium](https://osmcode.org/pyosmium/) (PyPI name `osmium`),
@@ -31,7 +31,7 @@ wheels for Linux, macOS and Windows.
 Check the install:
 
 ```sh
-logator --help
+loconym --help
 ```
 
 ### Optional: osmium-tool
@@ -48,7 +48,7 @@ conda install -c conda-forge osmium-tool   # or: apt install osmium-tool / brew 
 ## TypeScript client
 
 ```sh
-npm install @thath/logator     # or: pnpm add @thath/logator / yarn add @thath/logator
+npm install loconym     # or: pnpm add loconym / yarn add loconym
 ```
 
 The package is ESM-only and ships its own type declarations.

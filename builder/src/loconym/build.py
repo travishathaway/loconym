@@ -209,7 +209,7 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
     node_index: auto|memory|disk (where libosmium keeps node locations)."""
     out_path = Path(output)
     out_path.unlink(missing_ok=True)
-    tmpdir = tempfile.mkdtemp(prefix="logator-", dir=str(out_path.parent))
+    tmpdir = tempfile.mkdtemp(prefix="loconym-", dir=str(out_path.parent))
     scratch_path = str(Path(tmpdir) / "scratch.sqlite")
     big = Path(pbf).stat().st_size > BIG_INPUT_BYTES
     use_prefilter = prefilter_mode == "always" or (prefilter_mode == "auto" and big and osmium_available())

@@ -32,7 +32,7 @@ importers:
 
   examples/berlin-map:
     dependencies:
-      '@thath/logator':
+      loconym:
         specifier: workspace:*
         version: link:../../client
       maplibre-gl:
@@ -51,7 +51,7 @@ importers:
 
   examples/browser-demo:
     dependencies:
-      '@thath/logator':
+      loconym:
         specifier: workspace:*
         version: link:../../client
       bootstrap:

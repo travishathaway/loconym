@@ -1,6 +1,6 @@
 """Benchmark a built database with the reference reader: correctness against its own data + pages read per query.
 
-  logator-bench DB [--n 300] [--seed 7]
+  loconym-bench DB [--n 300] [--seed 7]
 Page counting uses an apsw logging VFS (4 KiB pages, cold = fresh connection per query, warm = 256 KiB cache).
 """
 import argparse
@@ -10,7 +10,7 @@ import statistics
 import apsw
 
 from .codec import decode_housenumbers
-from .reader import Gator
+from .reader import Loconym
 
 PAGE = 4096
 _reads: set[int] = set()
@@ -68,12 +68,12 @@ def run(path, n=300, seed=7, out=print):
     cold, ok_s, ok_n = [], 0, 0
     for sid, _name, _city, hn, lon, lat in samples:
         _reads.clear()
-        g = Gator(_open(path))
+        g = Loconym(_open(path))
         r = g.reverse(lon, lat)
         cold.append(len(_reads))
         ok_s += bool(r and r["street_id"] == sid)
         ok_n += bool(r and r["housenumber"] == hn)
-    warm_db = Gator(_open(path, 64))
+    warm_db = Loconym(_open(path, 64))
     for _, _, _, _, lon, lat in samples[:50]:
         warm_db.reverse(lon, lat)
     warm = []
@@ -88,7 +88,7 @@ def run(path, n=300, seed=7, out=print):
     for sid, name, city, hn, _lon, _lat in samples:
         q = f"{name} {hn}, {city}" if city else f"{name} {hn}"
         _reads.clear()
-        g = Gator(_open(path))
+        g = Loconym(_open(path))
         res = g.search(q)
         cold.append(len(_reads))
         ids = [h["street_id"] for h in res]
@@ -102,7 +102,7 @@ def run(path, n=300, seed=7, out=print):
     for sid, name, city, *_ in samples[:100]:
         pre = name[: max(3, len(name) // 2)]
         _reads.clear()
-        g = Gator(_open(path))
+        g = Loconym(_open(path))
         res = g.search(f"{pre}, {city}" if city else pre)
         cold.append(len(_reads))
         top5 += any(h["street_id"] == sid for h in res)
@@ -110,7 +110,7 @@ def run(path, n=300, seed=7, out=print):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="logator-bench")
+    p = argparse.ArgumentParser(prog="loconym-bench")
     p.add_argument("db")
     p.add_argument("--n", type=int, default=300)
     p.add_argument("--seed", type=int, default=7)
