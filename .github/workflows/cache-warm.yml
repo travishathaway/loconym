@@ -1,0 +1,36 @@
+name: Keep OSM caches warm
+
+# GitHub deletes Actions caches that haven't been used for 7 days, and the next CI run would then download the
+# extract from Geofabrik again. This workflow restores every extract's cache every 5 days, which resets that clock.
+# On main, a cache miss downloads the extract once and saves it, so running it by hand ("Run workflow") also seeds
+# the caches before the other workflows need them. Caches saved on main are visible to every branch, PR and tag.
+#
+# Keep the extract list in sync with the workflows that use .github/actions/osm-extract.
+
+on:
+  schedule:
+    - cron: "23 5 */5 * *" # days 1, 6, 11, ... 31: never more than 5 days apart
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cache-warm
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    name: Restore OSM extract caches
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/osm-extract
+        with: { name: monaco, path: europe/monaco }
+
+      - uses: ./.github/actions/osm-extract
+        with: { name: bremen, path: europe/germany/bremen }
+
+      - uses: ./.github/actions/osm-extract
+        with: { name: berlin, path: europe/germany/berlin }

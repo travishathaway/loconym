@@ -89,3 +89,9 @@ python -m http.server -d site
 | `wheel.yml` | push to `main`, PRs, `py-v*` tags | Builds the sdist and wheel, installs the wheel with plain pip on Python 3.11–3.14 and runs the tests against it; publishes on tags |
 | `npm-publish.yml` | `js-v*` tags, manual | Tests, builds and publishes the client to npm |
 | `docs.yml` | push to `main`, PRs | Builds the Berlin database, this site and the demo; deploys them to GitHub Pages from `main` |
+| `cache-warm.yml` | every 5 days, manual | Restores the cached Geofabrik extracts so GitHub doesn't evict them after 7 days unused; on a miss, downloads and caches them |
+
+Workflows get Geofabrik extracts through `.github/actions/osm-extract`, which keeps one Actions cache entry per
+extract (`osm-<name>-v1`) and downloads from Geofabrik only on a cache miss. The cached files are never refreshed
+on their own. To pick up newer OpenStreetMap data, bump the action's `version` default, then run *Keep OSM caches
+warm* on `main` to download each extract once.
