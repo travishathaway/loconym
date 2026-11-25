@@ -1,0 +1,5 @@
+packages:
+  - client
+  - examples/*
+allowBuilds:
+  esbuild: true

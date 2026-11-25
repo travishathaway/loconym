@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>logator demo</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <aside id="panel">
+      <h1>logator</h1>
+      <p class="sub">Offline geocoding from one SQLite file. No server: the browser reads the database it needs.</p>
+      <div class="row">
+        <label>Region <select id="db"><option value="berlin">Berlin</option><option value="monaco">Monaco</option></select></label>
+        <label>Mode <select id="mode"><option value="range">HTTP range</option><option value="fetch">Full download</option></select></label>
+      </div>
+      <input id="q" type="search" placeholder="Search an address, e.g. Unter den Linden 77, Berlin" autocomplete="off" disabled />
+      <ul id="results"></ul>
+      <section id="detail" hidden></section>
+      <p id="status" class="status">Loading…</p>
+      <p class="attrib">Data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (ODbL). Click the map to reverse geocode.</p>
+    </aside>
+    <div id="map"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

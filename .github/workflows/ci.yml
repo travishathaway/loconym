@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      # Monaco drives the Python build test; Bremen is turned into golden vectors for the client parity tests.
+      # Geofabrik extracts are cached so CI doesn't download them on every run; bump the key to refresh them.
+      - name: Cache OSM extracts
+        uses: actions/cache@v6
+        with:
+          path: |
+            fixtures/monaco/monaco.osm.pbf
+            fixtures/bremen/bremen.osm.pbf
+          key: osm-extracts-v1
+
+      - name: Download OSM extracts
+        shell: bash
+        run: |
+          fetch() {
+            if [ ! -s "$2" ]; then
+              mkdir -p "$(dirname "$2")"
+              curl -fsSL --retry 3 -o "$2" "https://download.geofabrik.de/$1"
+            fi
+          }
+          fetch europe/monaco-latest.osm.pbf fixtures/monaco/monaco.osm.pbf
+          fetch europe/germany/bremen-latest.osm.pbf fixtures/bremen/bremen.osm.pbf
+
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          environments: default
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Lint (ruff)
+        run: pixi run lint
+
+      - name: Python tests
+        run: pixi run test-builder
+
+      - name: Generate Bremen golden vectors
+        run: pixi run golden-data
+
+      - name: TypeScript client tests
+        run: pixi run client-test
+
+      - name: Build the client and the browser demo (typecheck)
+        run: pixi run demo-build

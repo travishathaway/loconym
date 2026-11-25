@@ -1,0 +1,52 @@
+{
+  "name": "@thath/logator",
+  "version": "0.0.1",
+  "description": "Offline reverse and forward geocoding in the browser from a compact SQLite file",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://travishathaway.github.io/logator/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/travishathaway/logator.git",
+    "directory": "client"
+  },
+  "bugs": "https://github.com/travishathaway/logator/issues",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --passWithNoTests",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
+    "sqlite-wasm-http": "^1.2.0"
+  },
+  "devDependencies": {
+    "@mmomtchev/web-worker": "^1.3.0",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^2"
+  },
+  "keywords": [
+    "geocoding",
+    "reverse-geocoding",
+    "openstreetmap",
+    "sqlite",
+    "offline"
+  ]
+}

@@ -1,0 +1,78 @@
+# Set up a development environment and run the tests
+
+The repository uses [pixi](https://pixi.sh) to manage Python, Node.js and pnpm. All dependencies come from
+conda-forge.
+
+## Set up
+
+```sh
+git clone https://github.com/travishathaway/logator.git
+cd logator
+pixi install
+```
+
+`pixi install` creates the `default` environment, which contains everything. The `pixi.toml` groups dependencies
+into features:
+
+| Feature | Contents | Used for |
+|---|---|---|
+| *(default)* | `python`, `pyosmium`, `shapely`, `apsw`, `osmium-tool`, plus `logator` (editable) | Runtime of the Python package |
+| `dev` | `pytest`, `ruff` | Python tests and linting |
+| `js` | `nodejs`, `pnpm` | TypeScript client and browser demo |
+| `docs` | `zensical` | This website |
+| `release` | `python-build`, `twine` | Building the sdist and wheel |
+
+CI also uses the lean `docs`, `js` and `release` environments (`pixi run -e docs …`).
+
+## Get test data
+
+The Python build test needs the Monaco extract, and the client's Bremen tests need Bremen golden vectors:
+
+```sh
+curl -L --create-dirs -o fixtures/monaco/monaco.osm.pbf https://download.geofabrik.de/europe/monaco-latest.osm.pbf
+curl -L --create-dirs -o fixtures/bremen/bremen.osm.pbf https://download.geofabrik.de/europe/germany/bremen-latest.osm.pbf
+pixi run golden-data      # writes fixtures/golden/bremen.{sqlite,golden.json}
+```
+
+Tests that need a missing fixture are skipped, not failed. The Monaco golden vectors
+(`fixtures/golden/monaco.*`) are committed. Regenerate them with `pixi run golden-monaco` only when the format or
+the reference reader changes on purpose.
+
+## Run the tests
+
+```sh
+pixi run test             # everything: Python (pytest) + TypeScript (vitest)
+pixi run test-builder     # Python only
+pixi run client-test      # TypeScript only: decoders and queries vs the Python reference, fetch and range modes
+pixi run lint             # ruff
+pixi run demo-build       # type-checks and builds the client and the browser demo
+```
+
+The client tests are parity tests. The Python builder writes golden vectors (`logator-golden`), and the TypeScript
+client must reproduce the Python reference reader's results for every case.
+
+## Work on the docs
+
+```sh
+pixi run docs-serve       # http://localhost:8000, live reload
+pixi run docs-build       # static site in site/
+```
+
+Pages live in `docs/` and follow [Diátaxis](https://diataxis.fr/). Put each new page in the right section and add
+it to `nav` in `zensical.toml`.
+
+## Run the demo
+
+```sh
+pixi run demo-data        # needs fixtures/berlin/berlin.osm.pbf
+pixi run demo-dev         # http://localhost:5173
+```
+
+## Continuous integration
+
+| Workflow | Runs | Does |
+|---|---|---|
+| `ci.yml` | push to `main`, PRs | Lint, Python tests, Bremen golden vectors, client tests, demo build on Linux and macOS |
+| `wheel.yml` | push to `main`, PRs, `py-v*` tags | Builds the sdist and wheel, installs the wheel with plain pip on Python 3.11–3.14 and runs the tests against it; publishes on tags |
+| `npm-publish.yml` | `js-v*` tags, manual | Tests, builds and publishes the client to npm |
+| `docs.yml` | push to `main`, PRs | Builds this site; deploys it to GitHub Pages from `main` |

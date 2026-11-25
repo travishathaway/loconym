@@ -1,0 +1,87 @@
+[workspace]
+name = "logator"
+channels = ["conda-forge"]
+platforms = ["linux-aarch64", "linux-64", "osx-arm64", "osx-64"]
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Project (runtime) dependencies of the `logator` Python package, installed from conda-forge.
+# Keep this list in sync with [project.dependencies] in builder/pyproject.toml (conda name -> PyPI name):
+#   pyosmium -> osmium, shapely -> shapely, apsw -> apsw
+# ---------------------------------------------------------------------------------------------------------------------
+[dependencies]
+python = ">=3.11"
+pyosmium = ">=4"
+shapely = ">=2"
+apsw = ">=3.54.1.0,<4"
+# Optional at runtime (not on PyPI): the `osmium` binary used by `logator build --prefilter` on large extracts.
+osmium-tool = ">=1.19.1,<2"
+
+# The package itself, editable. Its PyPI dependencies are already satisfied by the conda packages above.
+[pypi-dependencies]
+logator = { path = "builder", editable = true }
+
+[tasks]
+golden-data = { cmd = "python -m logator.golden bremen fixtures/bremen/bremen.osm.pbf fixtures/golden", description = "Regenerate the Bremen golden vectors (needs fixtures/bremen/bremen.osm.pbf)" }
+golden-monaco = { cmd = "python -m logator.golden monaco fixtures/monaco/monaco.osm.pbf fixtures/golden", description = "Regenerate the committed Monaco golden vectors" }
+demo-data = { cmd = "logator build fixtures/berlin/berlin.osm.pbf -o examples/browser-demo/public/data/berlin.sqlite && cp fixtures/golden/monaco.sqlite examples/browser-demo/public/data/", description = "Build the demo databases (needs fixtures/berlin/berlin.osm.pbf)" }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Development: Python tests and linting
+# ---------------------------------------------------------------------------------------------------------------------
+[feature.dev.dependencies]
+pytest = ">=8"
+ruff = "*"
+
+[feature.dev.tasks]
+test-builder = { cmd = "pytest builder/tests", description = "Python test suite" }
+lint-builder = { cmd = "ruff check builder", description = "Lint the Python package" }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# JavaScript toolchain: TypeScript client and browser demo
+# ---------------------------------------------------------------------------------------------------------------------
+[feature.js.dependencies]
+nodejs = ">=22"
+pnpm = ">=9"
+
+[feature.js.tasks]
+client-install = "pnpm install"
+client-build = { cmd = "pnpm --filter @thath/logator run build", depends-on = ["client-install"], description = "Build the npm package into client/dist" }
+client-test = { cmd = "pnpm --filter @thath/logator run test", depends-on = ["client-install"], description = "Client test suite (vitest)" }
+demo-dev = { cmd = "pnpm --filter logator-browser-demo run dev", depends-on = ["client-build"] }
+demo-build = { cmd = "pnpm --filter logator-browser-demo run build", depends-on = ["client-build"] }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Documentation website (Zensical)
+# ---------------------------------------------------------------------------------------------------------------------
+[feature.docs.dependencies]
+python = ">=3.11"
+zensical = ">=0.1.3"
+
+[feature.docs.tasks]
+docs-serve = { cmd = "zensical serve", description = "Live-reloading docs at http://localhost:8000" }
+docs-build = { cmd = "zensical build --clean", description = "Build the docs website into site/" }
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Release: build and check the Python sdist + wheel
+# ---------------------------------------------------------------------------------------------------------------------
+[feature.release.dependencies]
+python = ">=3.11"
+python-build = "*"
+twine = "*"
+
+[feature.release.tasks]
+build-dist = { cmd = "python -m build builder --outdir dist", description = "Build sdist and wheel into dist/" }
+check-dist = { cmd = "twine check --strict dist/*", depends-on = ["build-dist"] }
+
+# Combined tasks for the default (everything) environment.
+[feature.all.tasks]
+test = { depends-on = ["test-builder", "client-test"], description = "Full test suite (Python + TypeScript)" }
+lint = { depends-on = ["lint-builder"] }
+
+[environments]
+# `pixi install` / `pixi run <task>`: everything, for local development.
+default = { features = ["dev", "js", "docs", "release", "all"], solve-group = "default" }
+# Lean environments for CI jobs that need only one toolchain.
+docs = { features = ["docs"], no-default-feature = true }
+js = { features = ["js"], no-default-feature = true }
+release = { features = ["release"], no-default-feature = true }

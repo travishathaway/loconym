@@ -1,0 +1,75 @@
+/* logator brand colors, taken from the logo:
+     gator green  #70853C  (body)      -> primary
+     highlight    #97A927  (scales)    -> accent, links in dark mode
+     dark green   #5A6415  (ridges)    -> links in light mode (6.4:1 on white; #70853C alone is 4.1:1)
+   The header and tab bar are black. */
+
+:root > * {
+  --md-primary-fg-color: #70853c;
+  --md-primary-fg-color--light: #97a927;
+  --md-primary-fg-color--dark: #5a6415;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+  --md-accent-fg-color: #97a927;
+  --md-accent-fg-color--transparent: rgba(151, 169, 39, 0.1);
+  --logator-navbar: #000000;
+}
+
+[data-md-color-scheme="default"] {
+  --md-typeset-a-color: #5a6415;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-typeset-a-color: #a8bb3a;
+  --md-accent-fg-color: #b5c94a;
+}
+
+/* black navbar + navigation tabs */
+.md-header,
+.md-tabs {
+  background-color: var(--logator-navbar);
+  color: #ffffff;
+}
+
+/* the drawer header on small screens uses the primary color by default */
+.md-nav__source,
+.md-nav--primary .md-nav__title[for="__drawer"] {
+  background-color: var(--logator-navbar);
+  color: #ffffff;
+}
+
+/* search box on the black header (light scheme defaults assume a colored header) */
+.md-header .md-search__button {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.md-header .md-search__button svg {
+  color: #ffffff;
+  stroke: #ffffff;
+}
+.md-header .md-search__button::before {
+  background-color: #ffffff;
+}
+.md-header .md-search__button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* a green rule under the navbar ties it to the brand color */
+.md-header {
+  border-bottom: 3px solid var(--md-primary-fg-color);
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.8rem;
+}
+
+/* home page hero */
+.logator-hero {
+  text-align: center;
+  margin: 1rem 0 2rem;
+}
+.logator-hero img {
+  width: 160px;
+  height: auto;
+}

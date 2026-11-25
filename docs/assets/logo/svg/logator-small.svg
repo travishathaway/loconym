@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="logator favicon">
+<title>logator</title>
+<!-- magnifier handle (held in the mouth) -->
+<path d="M12.5 12.5 L18.5 23" stroke="#66757F" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+<!-- lens -->
+<circle cx="9.4" cy="9.6" r="8.6" fill="#8899A6"/>
+<circle cx="9.4" cy="9.6" r="5.9" fill="#BBDDF5"/>
+<!-- back ridges -->
+<circle cx="26" cy="15.2" r="1.7" fill="#5A6415"/>
+<circle cx="30" cy="16.2" r="1.7" fill="#5A6415"/>
+<!-- body + head + long snout -->
+<rect x="17" y="15" width="17" height="13" rx="5" fill="#70853C"/>
+<rect x="5.5" y="20.5" width="20" height="7.5" rx="3.75" fill="#70853C"/>
+<!-- eye bump -->
+<circle cx="22.5" cy="17" r="3.6" fill="#70853C"/>
+<circle cx="22.8" cy="16.8" r="1.6" fill="#2E2C33"/>
+<!-- mouth + teeth -->
+<rect x="8" y="25.6" width="11" height="1.4" rx=".7" fill="#F26A35"/>
+<path d="M10 25.6 l.9 -1.6 l.9 1.6 z M14.5 25.6 l.9 -1.6 l.9 1.6 z" fill="#FFFDFD"/>
+<circle cx="7.6" cy="22.4" r=".7" fill="#2E2C33"/>
+</svg>

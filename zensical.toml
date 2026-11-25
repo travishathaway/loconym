@@ -1,0 +1,85 @@
+[project]
+site_name = "logator"
+site_description = "Offline reverse and forward geocoding from a single compact SQLite file built from OpenStreetMap data."
+site_url = "https://travishathaway.github.io/logator/"
+repo_url = "https://github.com/travishathaway/logator"
+repo_name = "travishathaway/logator"
+edit_uri = "edit/main/docs/"
+copyright = "Code: GPL-3.0-or-later · Data © OpenStreetMap contributors (ODbL) · Logo derived from Twemoji (CC-BY 4.0) and Noto Emoji (Apache-2.0)"
+docs_dir = "docs"
+site_dir = "site"
+extra_css = ["stylesheets/extra.css"]
+exclude_docs = """
+assets/logo/ATTRIBUTION.md
+"""
+
+# Organized with Diátaxis (https://diataxis.fr/): tutorials, how-to guides, reference, explanation.
+nav = [
+  { "Home" = "index.md" },
+  { "Tutorials" = [
+    "tutorials/index.md",
+    "tutorials/first-geocoder.md",
+  ] },
+  { "How-to guides" = [
+    "how-to/index.md",
+    "how-to/install.md",
+    "how-to/range-requests.md",
+    "how-to/autocomplete.md",
+    "how-to/large-extracts.md",
+    "how-to/reverse-only.md",
+    "how-to/benchmark.md",
+    "how-to/develop.md",
+    "how-to/release.md",
+  ] },
+  { "Reference" = [
+    "reference/index.md",
+    "reference/cli.md",
+    "reference/typescript-api.md",
+    "reference/python-api.md",
+    "reference/format-spec.md",
+    "reference/spike-notes.md",
+  ] },
+  { "Explanation" = [
+    "explanation/index.md",
+    "explanation/architecture.md",
+    "explanation/range-vs-fetch.md",
+    "explanation/matching.md",
+    "explanation/status.md",
+  ] },
+  { "Credits" = "credits.md" },
+]
+
+[project.theme]
+logo = "assets/logo/svg/logator-medium.svg"
+favicon = "assets/logo/png/logator-small-16.png"
+language = "en"
+features = [
+  "navigation.tabs",
+  "navigation.sections",
+  "navigation.indexes",
+  "navigation.top",
+  "navigation.instant",
+  "navigation.tracking",
+  "navigation.footer",
+  "content.code.copy",
+  "content.action.edit",
+  "search.highlight",
+  "toc.follow",
+]
+
+# Gator green (#70853C, from the logo) as the primary color; the header/navbar is black (see stylesheets/extra.css).
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to light mode"

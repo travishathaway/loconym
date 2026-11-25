@@ -1,0 +1,118 @@
+name: Wheel
+
+# Builds the sdist + wheel on every push/PR, then installs the wheel with plain pip (no conda) on several Python
+# versions and runs the test suite against it. This checks that builder/pyproject.toml declares every dependency.
+# Pushing a tag `py-vX.Y.Z` additionally publishes to PyPI through trusted publishing.
+
+on:
+  push:
+    branches: [main]
+    tags: ["py-v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build sdist and wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check that the tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/py-v')
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' builder/src/logator/__init__.py)
+          if [ "py-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match builder/src/logator/__init__.py version $version"
+            exit 1
+          fi
+
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          environments: release
+
+      - name: Build and check
+        run: pixi run -e release check-dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: error
+
+  test:
+    name: Test wheel (${{ matrix.os }}, Python ${{ matrix.python }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: dist/
+
+      - name: Cache Monaco extract
+        uses: actions/cache@v6
+        with:
+          path: fixtures/monaco/monaco.osm.pbf
+          key: osm-monaco-v1
+
+      - name: Download Monaco extract
+        shell: bash
+        run: |
+          if [ ! -s fixtures/monaco/monaco.osm.pbf ]; then
+            mkdir -p fixtures/monaco
+            curl -fsSL --retry 3 -o fixtures/monaco/monaco.osm.pbf https://download.geofabrik.de/europe/monaco-latest.osm.pbf
+          fi
+
+      - name: Install the wheel
+        shell: bash
+        run: python -m pip install dist/*.whl pytest
+
+      - name: Run tests against the installed wheel
+        shell: bash
+        run: |
+          # make sure the tests import the installed package, not builder/src
+          python -c "import logator, sys; assert 'site-packages' in logator.__file__, logator.__file__; print(logator.__version__)"
+          python -m pytest builder/tests -p no:cacheprovider
+
+      - name: CLI smoke test
+        shell: bash
+        run: |
+          logator build fixtures/monaco/monaco.osm.pbf -o monaco.sqlite
+          logator-bench monaco.sqlite --n 20
+
+  publish:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/py-v')
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/logator
+    permissions:
+      id-token: write  # trusted publishing (OIDC), no API token needed
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
