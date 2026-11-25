@@ -68,19 +68,9 @@ jobs:
           name: python-dist
           path: dist/
 
-      - name: Cache Monaco extract
-        uses: actions/cache@v6
-        with:
-          path: fixtures/monaco/monaco.osm.pbf
-          key: osm-monaco-v1
-
-      - name: Download Monaco extract
-        shell: bash
-        run: |
-          if [ ! -s fixtures/monaco/monaco.osm.pbf ]; then
-            mkdir -p fixtures/monaco
-            curl -fsSL --retry 3 -o fixtures/monaco/monaco.osm.pbf https://download.geofabrik.de/europe/monaco-latest.osm.pbf
-          fi
+      # From the Actions cache; Geofabrik is only hit on a cache miss (see .github/actions/osm-extract).
+      - uses: ./.github/actions/osm-extract
+        with: { name: monaco, path: europe/monaco }
 
       - name: Install the wheel
         shell: bash

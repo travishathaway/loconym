@@ -25,26 +25,12 @@ jobs:
       - uses: actions/checkout@v7
 
       # Monaco drives the Python build test; Bremen is turned into golden vectors for the client parity tests.
-      # Geofabrik extracts are cached so CI doesn't download them on every run; bump the key to refresh them.
-      - name: Cache OSM extracts
-        uses: actions/cache@v6
-        with:
-          path: |
-            fixtures/monaco/monaco.osm.pbf
-            fixtures/bremen/bremen.osm.pbf
-          key: osm-extracts-v1
+      # Both come from the Actions cache; Geofabrik is only hit on a cache miss (see .github/actions/osm-extract).
+      - uses: ./.github/actions/osm-extract
+        with: { name: monaco, path: europe/monaco }
 
-      - name: Download OSM extracts
-        shell: bash
-        run: |
-          fetch() {
-            if [ ! -s "$2" ]; then
-              mkdir -p "$(dirname "$2")"
-              curl -fsSL --retry 3 -o "$2" "https://download.geofabrik.de/$1"
-            fi
-          }
-          fetch europe/monaco-latest.osm.pbf fixtures/monaco/monaco.osm.pbf
-          fetch europe/germany/bremen-latest.osm.pbf fixtures/bremen/bremen.osm.pbf
+      - uses: ./.github/actions/osm-extract
+        with: { name: bremen, path: europe/germany/bremen }
 
       - uses: prefix-dev/setup-pixi@v0.11.3
         with:
@@ -64,5 +50,8 @@ jobs:
       - name: TypeScript client tests
         run: pixi run client-test
 
-      - name: Build the client and the browser demo (typecheck)
+      - name: Build the client and the Berlin map demo (typecheck)
         run: pixi run demo-build
+
+      - name: Build the example app (typecheck)
+        run: pixi run example-build

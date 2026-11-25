@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>logator · Berlin demo</title>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <div id="search" role="combobox" aria-expanded="false" aria-owns="suggestions" aria-haspopup="listbox">
+      <input id="q" type="search" placeholder="Search a Berlin address, e.g. Unter den Linden 77" autocomplete="off"
+        spellcheck="false" aria-autocomplete="list" aria-controls="suggestions" />
+      <ul id="suggestions" role="listbox" hidden></ul>
+    </div>
+
+    <div id="loader">
+      <p>Search every address in Berlin, offline in your browser. No server, just one SQLite file.</p>
+      <button id="load" type="button">Load the Berlin database</button>
+      <p id="status" class="status" aria-live="polite"></p>
+    </div>
+
+    <aside id="details" hidden aria-live="polite">
+      <button id="close" type="button" aria-label="Close details">×</button>
+      <h2 id="details-title"></h2>
+      <dl id="details-rows"></dl>
+    </aside>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

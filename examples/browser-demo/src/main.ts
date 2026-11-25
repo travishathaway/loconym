@@ -1,79 +1,122 @@
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import './style.css';
+import maplibregl, { type GeoJSONSource, type GeoJSONSourceSpecification } from 'maplibre-gl';
 import { Logator, type ReverseResult, type SearchResult } from '@thath/logator';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const dbSel = $<HTMLSelectElement>('db');
 const modeSel = $<HTMLSelectElement>('mode');
 const qInput = $<HTMLInputElement>('q');
-const resultsEl = $<HTMLUListElement>('results');
+const resultsEl = $('results');
 const detailEl = $('detail');
 const statusEl = $('status');
 
-const map = L.map('map').setView([52.5, 9.5], 6);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  crossOrigin: true, // tiles must be CORS-fetched on a cross-origin-isolated page (COEP: require-corp)
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-}).addTo(map);
-const marker = L.circleMarker([0, 0], { radius: 8, color: '#1a7f64', weight: 3, fillOpacity: 0.3 });
-let coverage: L.Rectangle | null = null;
+const PLACEHOLDER: Record<string, string> = {
+  berlin: 'Search an address, e.g. Unter den Linden 77',
+  monaco: 'Search an address, e.g. Avenue Princesse Grace',
+};
+
+// 'range' mode needs a cross-origin-isolated page (see vite.config.ts). Without it, offer only 'fetch'.
+if (!self.crossOriginIsolated) {
+  modeSel.value = 'fetch';
+  modeSel.querySelector<HTMLOptionElement>('option[value="range"]')!.disabled = true;
+  modeSel.title = 'HTTP range requests need a cross-origin-isolated page (COOP/COEP headers)';
+}
+
+// Every map resource (style, tiles, glyphs, sprites) is fetched with CORS, which COEP 'require-corp' allows.
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/bright',
+  center: [9.5, 52.5],
+  zoom: 5,
+});
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+const marker = new maplibregl.Marker({ color: '#70853C' });
+const mapReady = new Promise<void>((resolve) => map.once('load', () => resolve()));
+
 let gator: Logator | null = null;
 let searchSeq = 0;
+let openSeq = 0;
 
 function setStatus(msg: string) {
   statusEl.textContent = msg;
 }
 
 function showDetail(title: string, rows: [string, string][]) {
-  detailEl.hidden = false;
-  detailEl.replaceChildren();
-  const h = document.createElement('h2');
-  h.textContent = title;
-  const dl = document.createElement('dl');
+  $('detail-title').textContent = title;
+  const dl = $('detail-rows');
+  dl.replaceChildren();
   for (const [k, v] of rows) {
     const dt = document.createElement('dt');
-    dt.textContent = k;
+    dt.className = 'col-5 fw-normal text-body-secondary text-capitalize';
+    dt.textContent = k.replace(/_/g, ' ');
     const dd = document.createElement('dd');
+    dd.className = 'col-7 mb-1';
     dd.textContent = v;
     dl.append(dt, dd);
   }
-  detailEl.append(h, dl);
+  detailEl.hidden = false;
 }
 
 function show(lat: number, lon: number, zoom?: number) {
-  marker.setLatLng([lat, lon]).addTo(map);
-  if (zoom) map.flyTo([lat, lon], zoom, { duration: 0.6 });
+  marker.setLngLat([lon, lat]).addTo(map);
+  if (zoom) map.flyTo({ center: [lon, lat], zoom, duration: 800 });
+}
+
+/** Dashed outline of the database's coverage (its bbox). */
+async function showCoverage([w, s, e, n]: number[]) {
+  await mapReady;
+  const data: GeoJSONSourceSpecification['data'] = {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'LineString', coordinates: [[w, s], [e, s], [e, n], [w, n], [w, s]] },
+  };
+  const src = map.getSource('coverage') as GeoJSONSource | undefined;
+  if (src) src.setData(data);
+  else {
+    map.addSource('coverage', { type: 'geojson', data });
+    map.addLayer({
+      id: 'coverage',
+      type: 'line',
+      source: 'coverage',
+      paint: { 'line-color': '#5a6415', 'line-width': 1.5, 'line-dasharray': [3, 2] },
+    });
+  }
+  map.fitBounds([w, s, e, n], { padding: 30, duration: 0 });
 }
 
 async function open() {
+  const seq = ++openSeq;
   qInput.disabled = true;
+  qInput.value = '';
   resultsEl.replaceChildren();
   detailEl.hidden = true;
+  marker.remove();
   setStatus('Opening database…');
   await gator?.close();
   gator = null;
+  const url = new URL(`data/${dbSel.value}.sqlite`, document.baseURI).href;
   const t0 = performance.now();
+  let g: Logator;
   try {
-    const url = new URL(`data/${dbSel.value}.sqlite`, document.baseURI).href;
-    gator = await Logator.open({ url, mode: modeSel.value as 'range' | 'fetch' });
+    g = await Logator.open({ url, mode: modeSel.value as 'range' | 'fetch' });
   } catch (e) {
-    setStatus(`Failed to open database: ${(e as Error).message}. Run "pixi run demo-data" first.`);
+    if (seq === openSeq) setStatus(`Failed to open database: ${(e as Error).message}. Run "pixi run example-data" first.`);
     return;
   }
-  const [w, s, e, n] = gator.meta.bbox.split(',').map(Number);
-  coverage?.remove();
-  coverage = L.rectangle([[s, w], [n, e]], { color: '#1a7f64', weight: 1, fill: false, dashArray: '4' }).addTo(map);
-  map.fitBounds(coverage.getBounds());
+  if (seq !== openSeq) return void g.close(); // the user switched again while this one was opening
+  gator = g;
+  await showCoverage(g.meta.bbox.split(',').map(Number));
   qInput.disabled = false;
-  qInput.placeholder = dbSel.value === 'berlin' ? 'Search an address, e.g. Unter den Linden 77, Berlin' : 'Search an address, e.g. Avenue Princesse Grace';
-  setStatus(`Ready in ${Math.round(performance.now() - t0)} ms · ${gator.meta.source} · built ${gator.meta.created_utc.slice(0, 10)}`);
+  qInput.placeholder = PLACEHOLDER[dbSel.value];
+  setStatus(`Ready in ${Math.round(performance.now() - t0)} ms · ${g.meta.source} · built ${g.meta.created_utc.slice(0, 10)}`);
 }
 
-map.on('click', async (ev: L.LeafletMouseEvent) => {
+map.on('click', async (ev) => {
   if (!gator) return;
   const t0 = performance.now();
-  const r: ReverseResult | null = await gator.reverse({ lat: ev.latlng.lat, lon: ev.latlng.lng, zoom: 18 });
+  const r: ReverseResult | null = await gator.reverse({ lat: ev.lngLat.lat, lon: ev.lngLat.lng, zoom: 18 });
   const ms = Math.round(performance.now() - t0);
   if (!r) {
     setStatus(`No data at this point (${ms} ms). Click inside the dashed area.`);
@@ -91,18 +134,27 @@ map.on('click', async (ev: L.LeafletMouseEvent) => {
 function renderResults(items: SearchResult[]) {
   resultsEl.replaceChildren();
   for (const r of items) {
-    const li = document.createElement('li');
-    li.textContent = r.display_name;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'list-group-item list-group-item-action px-2 py-1';
+    btn.textContent = r.display_name;
     if (r.interpolated) {
       const s = document.createElement('small');
+      s.className = 'd-block text-body-secondary';
       s.textContent = 'interpolated house number';
-      li.append(s);
+      btn.append(s);
     }
-    li.addEventListener('click', () => {
+    btn.addEventListener('click', () => {
+      for (const el of resultsEl.children) el.classList.toggle('active', el === btn);
       show(r.lat, r.lon, r.housenumber ? 18 : 16);
-      showDetail(r.display_name, [['lat', r.lat.toFixed(6)], ['lon', r.lon.toFixed(6)], ['street id', String(r.street_id)]]);
+      showDetail(r.display_name, [
+        ['lat', r.lat.toFixed(6)],
+        ['lon', r.lon.toFixed(6)],
+        ['street id', String(r.street_id)],
+        ...(r.interpolated ? ([['note', 'house number interpolated']] as [string, string][]) : []),
+      ]);
     });
-    resultsEl.append(li);
+    resultsEl.append(btn);
   }
 }
 
@@ -118,7 +170,7 @@ qInput.addEventListener('input', () => {
     if (seq !== searchSeq) return;
     renderResults(items);
     setStatus(`${items.length} result${items.length === 1 ? '' : 's'} in ${Math.round(performance.now() - t0)} ms`);
-  }, 200);
+    }, 200);
 });
 qInput.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter') (resultsEl.firstElementChild as HTMLElement | null)?.click();

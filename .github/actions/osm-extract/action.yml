@@ -1,0 +1,44 @@
+name: OSM extract
+description: >
+  Restore a Geofabrik extract from the Actions cache, downloading it only on a cache miss. Every workflow uses this
+  action, so each extract has exactly one cache entry (key `osm-<name>-<version>`) shared by all jobs.
+  GitHub evicts caches unused for 7 days; .github/workflows/cache-warm.yml restores them every few days to keep them.
+
+inputs:
+  name:
+    description: Short name; the file lands at fixtures/<name>/<name>.osm.pbf (e.g. "berlin")
+    required: true
+  path:
+    description: Geofabrik path without the "-latest.osm.pbf" suffix (e.g. "europe/germany/berlin")
+    required: true
+  version:
+    # The cached file is never refreshed on its own (Geofabrik's "-latest" files change daily). To pick up newer
+    # OSM data, bump this default; the next run on main downloads each extract once and caches it under the new key.
+    description: Cache key version
+    default: v1
+
+outputs:
+  file:
+    description: Path of the extract
+    value: fixtures/${{ inputs.name }}/${{ inputs.name }}.osm.pbf
+
+runs:
+  using: composite
+  steps:
+    - name: Cache ${{ inputs.name }} extract
+      id: cache
+      uses: actions/cache@v6
+      with:
+        path: fixtures/${{ inputs.name }}/${{ inputs.name }}.osm.pbf
+        key: osm-${{ inputs.name }}-${{ inputs.version }}
+        # Linux and macOS runners share the entry (it's just a file).
+        enableCrossOsArchive: true
+
+    - name: Download ${{ inputs.name }} extract (cache miss)
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        f="fixtures/${{ inputs.name }}/${{ inputs.name }}.osm.pbf"
+        mkdir -p "$(dirname "$f")"
+        echo "::notice::Cache miss for osm-${{ inputs.name }}-${{ inputs.version }}: downloading from Geofabrik"
+        curl -fsSL --retry 3 -o "$f" "https://download.geofabrik.de/${{ inputs.path }}-latest.osm.pbf"

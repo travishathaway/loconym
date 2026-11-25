@@ -10,6 +10,7 @@ Recipes for specific tasks. They assume you know the basics from the [tutorial](
 - [Build a database from a large extract](large-extracts.md)
 - [Build a smaller, reverse-only database](reverse-only.md)
 - [Check a database's quality and query cost](benchmark.md)
+- [Run the example app](run-the-example.md)
 
 **Working on logator**
 

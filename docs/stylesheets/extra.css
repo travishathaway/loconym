@@ -73,3 +73,23 @@
   width: 160px;
   height: auto;
 }
+
+/* home page demo (examples/berlin-map, built into site/demo/) */
+.md-typeset .logator-demo {
+  display: block;
+  width: 100%;
+  height: 480px;
+  margin: 1.5rem 0 0.4rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.4rem;
+}
+.md-typeset .logator-demo-caption {
+  margin-top: 0;
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+}
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .logator-demo {
+    height: 380px;
+  }
+}
