@@ -21,7 +21,8 @@ def test_meta_and_size(db):
     g = Loconym.open(db)
     assert g.meta["format_version"].startswith("0.")
     assert {"reverse", "search", "housenumber"} <= g.caps
-    assert db.stat().st_size < 300_000
+    assert "poi" in g.caps
+    assert db.stat().st_size < 400_000
 
 
 def test_reverse_at_addresses(db):
@@ -58,7 +59,7 @@ def test_search_roundtrip(db):
     for sid, name in g.db.execute("SELECT id, name FROM street WHERE parent>0 LIMIT 150").fetchall():
         res = g.search(name, limit=10)
         n += 1
-        ok += any(h["street_id"] == sid for h in res)
+        ok += any(h.get("street_id") == sid for h in res)
     assert ok / n > 0.9
 
 
@@ -71,6 +72,35 @@ def test_search_housenumber_located(db):
     res = g.search(f"{name} {hn}")
     hit = next(h for h in res if h["street_id"] == sid)
     assert abs(hit["lon"] - lon) < 1e-6 and abs(hit["lat"] - lat) < 1e-6 and hit["housenumber"] == hn
+
+
+def test_poi_search_and_reverse(db):
+    g = Loconym.open(db)
+    pois = g.db.execute("SELECT id, name, class, lat, lon FROM poi WHERE rank<=24 LIMIT 40").fetchall()
+    assert pois, "expected destination POIs in Monaco"
+    found = 0
+    for pid, name, _cls, lat, lon in pois:
+        hits = g.search(name, limit=10)
+        found += any(h["kind"] == "poi" and h["poi_id"] == pid for h in hits)
+        r = g.reverse(lon / 1e6, lat / 1e6, 18, pois=True)
+        assert r is None or r["kind"] in ("poi", "addr")
+    assert found / len(pois) > 0.8
+    # default reverse is unchanged: never reports a POI
+    assert all(g.reverse(lon / 1e6, lat / 1e6, 18)["kind"] != "poi" for _i, _n, _c, lat, lon in pois)
+
+
+def test_no_street_furniture(db):
+    g = Loconym.open(db)
+    classes = {c for (c,) in g.db.execute("SELECT DISTINCT class FROM poi")}
+    assert not classes & {"amenity=post_box", "amenity=bench", "highway=speed_camera", "amenity=waste_basket"}
+
+
+def test_poi_disabled(tmp_path):
+    out = tmp_path / "m.sqlite"
+    build(str(PBF), str(out), poi=False, log=lambda m: None)
+    g = Loconym.open(out)
+    assert "poi" not in g.caps
+    assert g.db.execute("SELECT count(*) FROM poi").fetchone()[0] == 0
 
 
 def test_search_none_capability(tmp_path):

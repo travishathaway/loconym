@@ -12,6 +12,8 @@ export interface Cell {
   streets: { id: number; pts: Pt[] }[];
   addrs: { streetId: number; housenumber: string; lon: number; lat: number }[];
   interps: { streetId: number; step: number; first: number; last: number; pts: Pt[] }[];
+  /** Trailing section (format 0.2); empty for older databases. */
+  pois: { id: number; lon: number; lat: number }[];
 }
 export interface StreetNumbers {
   addrs: { housenumber: string; lon: number; lat: number }[];
@@ -38,7 +40,7 @@ export function decodeLeaf(blob: Uint8Array, box: Box): Cell {
   const q = COORD_QUANTUM;
   const r = new Reader(blob);
   if (r.v() !== 0) throw new Error('not a leaf cell');
-  const cell: Cell = { admin: [], streets: [], addrs: [], interps: [] };
+  const cell: Cell = { admin: [], streets: [], addrs: [], interps: [], pois: [] };
   for (let n = r.v(); n > 0; n--) {
     const id = r.v();
     const flag = r.v();
@@ -73,6 +75,17 @@ export function decodeLeaf(blob: Uint8Array, box: Box): Cell {
     const first = r.v();
     const last = r.v();
     cell.interps.push({ streetId, step, first, last, pts: decCoords(r, ox, oy, q) });
+  }
+  if (r.more()) {
+    let id = 0;
+    px = 0;
+    py = 0;
+    for (let n = r.v(); n > 0; n--) {
+      id += r.v();
+      px += r.sv();
+      py += r.sv();
+      cell.pois.push({ id, lon: ox + px * q, lat: oy + py * q });
+    }
   }
   return cell;
 }

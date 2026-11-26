@@ -16,7 +16,8 @@ doesn't know.
 ## Not yet implemented
 
 - Postcodes, `addr:place` addresses and `associatedStreet` relations.
-- Points of interest and OSM ids (so there is no Nominatim-style `lookup`).
+- OSM ids (so there is no Nominatim-style `lookup`), POI de-duplication across node/area pairs, and class-word
+  queries such as "museum in Bremen". Named POIs are searchable; see [What counts as a POI](pois.md).
 - Names in multiple languages. `--language` is recorded but doesn't select name tags yet.
 - Normalization for non-Latin scripts.
 - Scoring beyond word coverage. Type-ahead top-5 accuracy is about 85% on large regions, limited by ties among

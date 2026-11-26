@@ -45,6 +45,7 @@ nav = [
     "explanation/architecture.md",
     "explanation/range-vs-fetch.md",
     "explanation/matching.md",
+    "explanation/pois.md",
     "explanation/status.md",
   ] },
   { "Credits" = "credits.md" },

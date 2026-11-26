@@ -15,6 +15,7 @@ from shapely.strtree import STRtree
 
 from .codec import lonlat_tile, tile_bounds
 from .normalize import normalize_key
+from .poi import poi_class, poi_name
 
 ROOT_ZOOM = 12
 BATCH = 50_000
@@ -117,6 +118,7 @@ SCRATCH_SCHEMA = """
 CREATE TABLE way(gid INT, root INT, wkb BLOB);
 CREATE TABLE addr(gid INT, root INT, hn TEXT, lon REAL, lat REAL);
 CREATE TABLE anode(id INTEGER PRIMARY KEY, hn TEXT, street TEXT);
+CREATE TABLE poi(root INT, name TEXT, cls TEXT, rank INT, city INT, lon REAL, lat REAL);
 """
 
 
@@ -129,9 +131,10 @@ def root_xy(k: int) -> tuple[int, int]:
 
 
 class _Collector(osmium.SimpleHandler):
-    def __init__(self, db, assigner, bbox_acc):
+    def __init__(self, db, assigner, bbox_acc, poi=True):
         super().__init__()
-        self.db, self.assigner = db, assigner
+        self.db, self.assigner, self.poi = db, assigner, poi
+        self.poi_buf, self.n_pois = [], 0
         self.groups, self.group_index = [], {}
         self.group_point, self.group_len = {}, {}
         self.way_buf, self.addr_buf, self.anode_buf, self.interp_raw = [], [], [], []
@@ -155,6 +158,8 @@ class _Collector(osmium.SimpleHandler):
     # -- handlers
     def node(self, n):
         t = n.tags
+        if self.poi and n.location.valid():
+            self._add_poi(t, n.location.lon, n.location.lat)
         hn = t.get("addr:housenumber")
         if not hn:
             return
@@ -181,12 +186,26 @@ class _Collector(osmium.SimpleHandler):
 
     def area(self, a):
         t = a.tags
-        if "addr:housenumber" in t and "addr:street" in t:
+        is_addr = "addr:housenumber" in t and "addr:street" in t
+        is_poi = self.poi and poi_class(t) is not None
+        if is_addr or is_poi:
             try:
                 p = wkb.loads(_wkbf.create_multipolygon(a), hex=True).representative_point()
-                self._add_addr(t["addr:street"], t["addr:housenumber"], p.x, p.y)
+                if is_addr:
+                    self._add_addr(t["addr:street"], t["addr:housenumber"], p.x, p.y)
+                if is_poi:
+                    self._add_poi(t, p.x, p.y)
             except Exception:
                 pass
+
+    def _add_poi(self, tags, lon, lat):
+        c = poi_class(tags)
+        if c is None:
+            return
+        key, value, rank = c
+        self.poi_buf.append((poi_name(tags), f"{key}={value}", rank, lon, lat))
+        if len(self.poi_buf) >= BATCH:
+            self.flush_pois()
 
     def _add_addr(self, st, hn, lon, lat):
         self.addr_buf.append((st, hn, lon, lat))
@@ -194,6 +213,19 @@ class _Collector(osmium.SimpleHandler):
             self.flush_addrs()
 
     # -- flushing
+    def flush_pois(self):
+        buf, self.poi_buf = self.poi_buf, []
+        if not buf:
+            return
+        cities = self.assigner.assign([b[3] for b in buf], [b[4] for b in buf])
+        rows = []
+        for (name, cls, rank, lon, lat), city in zip(buf, cities):
+            self._grow_bbox(lon, lat, lon, lat)
+            rx, ry = lonlat_tile(lon, lat, ROOT_ZOOM)
+            rows.append((root_key(rx, ry), name, cls, rank, city, lon, lat))
+        self.db.executemany("INSERT INTO poi VALUES (?,?,?,?,?,?,?)", rows)
+        self.n_pois += len(buf)
+
     def flush_ways(self):
         buf, self.way_buf = self.way_buf, []
         if not buf:
@@ -249,10 +281,11 @@ def _pass_index(node_index: str, n: int) -> str:
 
 
 FEATURE_KEYS = ("highway", "addr:housenumber", "addr:interpolation")
+POI_KEYS = ("tourism", "historic", "leisure", "natural", "man_made", "amenity", "railway", "aeroway", "shop")
 
 
 def extract(pbf: str, scratch_path: str, city_level: int = 8, log=print, *, boundaries_pbf: str | None = None,
-            node_index: str = "flex_mem") -> Extracted:
+            node_index: str = "flex_mem", poi: bool = True) -> Extracted:
     """boundaries_pbf: optional smaller file holding just the admin boundary relations (see prefilter.py);
     node_index: libosmium location index ('flex_mem' or e.g. 'sparse_file_array,/path/nodes.idx')."""
     log("pass 1: administrative boundaries")
@@ -261,12 +294,13 @@ def extract(pbf: str, scratch_path: str, city_level: int = 8, log=print, *, boun
     assigner = CityAssigner(admins, city_level)
     db = sqlite3.connect(scratch_path)
     db.executescript("PRAGMA journal_mode=off; PRAGMA synchronous=off;" + SCRATCH_SCHEMA)
-    log("pass 2: streets, addresses, interpolation")
+    log("pass 2: streets, addresses, interpolation" + (", POIs" if poi else ""))
     bbox = [180.0, 90.0, -180.0, -90.0]
-    c = _Collector(db, assigner, bbox)
-    c.apply_file(pbf, locations=True, idx=_pass_index(node_index, 2),
-                 filters=[osmium.filter.KeyFilter(*FEATURE_KEYS)])
+    c = _Collector(db, assigner, bbox, poi)
+    keys = FEATURE_KEYS + (POI_KEYS if poi else ())
+    c.apply_file(pbf, locations=True, idx=_pass_index(node_index, 2), filters=[osmium.filter.KeyFilter(*keys)])
     c.flush_ways()
+    c.flush_pois()
     c.flush_addrs()
     c.flush_anodes()
 
@@ -285,8 +319,10 @@ def extract(pbf: str, scratch_path: str, city_level: int = 8, log=print, *, boun
     db.execute("DROP TABLE anode")
     db.execute("CREATE INDEX way_root ON way(root)")
     db.execute("CREATE INDEX addr_root ON addr(root)")
+    db.execute("CREATE INDEX poi_root ON poi(root)")
     db.commit()
     db.close()
-    log(f"  ways={c.n_ways} addresses={c.n_addrs} street groups={len(c.groups)} interpolations={len(interps)}")
+    log(f"  ways={c.n_ways} addresses={c.n_addrs} street groups={len(c.groups)} interpolations={len(interps)}"
+        f" pois={c.n_pois}")
     return Extracted(admins, c.groups, c.group_point, interps, tuple(bbox),
-                     dict(ways=c.n_ways, addrs=c.n_addrs, interps=len(interps)))
+                     dict(ways=c.n_ways, addrs=c.n_addrs, interps=len(interps), pois=c.n_pois))

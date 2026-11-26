@@ -26,16 +26,18 @@ from .normalize import NORMALIZER_VERSION, normalize_key, normalize_tokens
 from .prefilter import available as osmium_available
 from .prefilter import prefilter
 
-FORMAT_VERSION = "0.1"
+FORMAT_VERSION = "0.2"
 CELL_ZOOM = 16
 MAX_SPLIT_ZOOM = 19
 PAGE_SIZE = 4096
+POI_PARENT = -2   # term.parent for POI postings is POI_PARENT - city (admin = -1, streets = city >= 0)
 ATTRIBUTION = "© OpenStreetMap contributors, ODbL 1.0"
 
 SCHEMA = """
 CREATE TABLE meta(k TEXT PRIMARY KEY, v) WITHOUT ROWID;
 CREATE TABLE admin(id INTEGER PRIMARY KEY, level INT, name TEXT, parent INT, city INT, rank INT);
 CREATE TABLE street(id INTEGER PRIMARY KEY, name TEXT, parent INT, lat INT, lon INT);
+CREATE TABLE poi(id INTEGER PRIMARY KEY, name TEXT, class TEXT, rank INT, parent INT, lat INT, lon INT);
 CREATE TABLE cell(id INTEGER PRIMARY KEY, data BLOB);
 CREATE TABLE term(t TEXT, parent INT, postings BLOB, PRIMARY KEY(t, parent)) WITHOUT ROWID;
 CREATE TABLE housenumber(street_id INTEGER PRIMARY KEY, data BLOB);
@@ -91,7 +93,7 @@ class CellWriter:
         self.rows = []
 
 
-def _to_cell(adm, streets, addrs, interps) -> Cell:
+def _to_cell(adm, streets, addrs, interps, pois=()) -> Cell:
     c = Cell()
     for aid, g in adm:
         if g is None:
@@ -101,11 +103,12 @@ def _to_cell(adm, streets, addrs, interps) -> Cell:
             c.admin.append((aid, polys))
     c.streets = [(sid, list(l.coords)) for sid, g in streets for l in lines_of(g)]
     c.addrs = list(addrs)
+    c.pois = list(pois)
     c.interps = [(sid, step, first, last, list(l.coords)) for sid, step, first, last, g in interps for l in lines_of(g)]
     return c
 
 
-def _children(x, y, z, adm, streets, addrs, interps):
+def _children(x, y, z, adm, streets, addrs, interps, pois):
     for i in (0, 1):
         for j in (0, 1):
             cx, cy = 2 * x + i, 2 * y + j
@@ -124,24 +127,25 @@ def _children(x, y, z, adm, streets, addrs, interps):
             cst = [(sid, p) for sid, g in streets if lines_of(p := clip(g, cb))]
             cin = [(*t[:4], p) for t in interps if lines_of(p := clip(t[4], cb))]
             cad = [a for a in addrs if cb[0] <= a[2] < cb[2] and cb[1] <= a[3] < cb[3]]
-            yield cx, cy, cadm, cst, cad, cin
+            cpo = [p for p in pois if cb[0] <= p[1] < cb[2] and cb[1] <= p[2] < cb[3]]
+            yield cx, cy, cadm, cst, cad, cin, cpo
 
 
-def _rec(w: CellWriter, x, y, z, adm, streets, addrs, interps):
-    if not (adm or streets or addrs or interps):
+def _rec(w: CellWriter, x, y, z, adm, streets, addrs, interps, pois=()):
+    if not (adm or streets or addrs or interps or pois):
         return
     key = cell_key(x, y, z)
-    if not (streets or addrs or interps):          # featureless: one coarse admin-only leaf
+    if not (streets or addrs or interps or pois):          # featureless: one coarse admin-only leaf
         w.put(key, encode_leaf(tile_bounds(x, y, z), _to_cell(adm, [], [], [])))
         return
     if z < CELL_ZOOM:                               # features exist: refine down to the base zoom
-        for cx, cy, *rest in _children(x, y, z, adm, streets, addrs, interps):
+        for cx, cy, *rest in _children(x, y, z, adm, streets, addrs, interps, pois):
             _rec(w, cx, cy, z + 1, *rest)
         return
-    blob = encode_leaf(tile_bounds(x, y, z), _to_cell(adm, streets, addrs, interps))
+    blob = encode_leaf(tile_bounds(x, y, z), _to_cell(adm, streets, addrs, interps, pois))
     if len(blob) > w.max_leaf and z < MAX_SPLIT_ZOOM:  # oversized hot cell: marker + children
         w.put(key, encode_split(), split=True)
-        for cx, cy, *rest in _children(x, y, z, adm, streets, addrs, interps):
+        for cx, cy, *rest in _children(x, y, z, adm, streets, addrs, interps, pois):
             _rec(w, cx, cy, z + 1, *rest)
     else:
         w.put(key, blob)
@@ -160,7 +164,8 @@ def _admin_roots(admins):
     return roots
 
 
-def build_cells(ex, scratch: sqlite3.Connection, out_db, final_id, max_leaf_bytes, log):
+def build_cells(ex, scratch: sqlite3.Connection, out_db, final_id, max_leaf_bytes, log, poi_id=None):
+    poi_id = poi_id or {}
     admins = ex.admins
     atree = shapely.STRtree([a.geom for a in admins]) if admins else None
     interp_by_root = defaultdict(list)
@@ -174,6 +179,7 @@ def build_cells(ex, scratch: sqlite3.Connection, out_db, final_id, max_leaf_byte
                     interp_by_root[root_key(rx, ry)].append((final_id[t[0]], t[1], t[2], t[3], t[4]))
     roots = {r for (r,) in scratch.execute("SELECT DISTINCT root FROM way")}
     roots |= {r for (r,) in scratch.execute("SELECT DISTINCT root FROM addr")}
+    roots |= {r for (r,) in scratch.execute("SELECT DISTINCT root FROM poi")}
     roots |= set(interp_by_root) | _admin_roots(admins)
     w = CellWriter(out_db, max_leaf_bytes)
     for n, r in enumerate(sorted(roots), 1):
@@ -191,7 +197,9 @@ def build_cells(ex, scratch: sqlite3.Connection, out_db, final_id, max_leaf_byte
         streets = [(final_id[g], wkb.loads(b)) for g, b in way_rows]
         addr_rows = scratch.execute("SELECT gid,hn,lon,lat FROM addr WHERE root=?", (r,))
         addrs = [(final_id[g], hn, lon, lat) for g, hn, lon, lat in addr_rows]
-        _rec(w, rx, ry, ROOT_ZOOM, adm, streets, addrs, interp_by_root.get(r, []))
+        poi_rows = scratch.execute("SELECT rowid, lon, lat FROM poi WHERE root=?", (r,))
+        pois = [(poi_id[rid], lon, lat) for rid, lon, lat in poi_rows]
+        _rec(w, rx, ry, ROOT_ZOOM, adm, streets, addrs, interp_by_root.get(r, []), pois)
         if n % 20 == 0 or len(w.rows) > 20000:
             w.flush()
             log(f"  roots {n}/{len(roots)}  cells={w.n_leaf} split markers={w.n_split}")
@@ -204,7 +212,7 @@ BIG_INPUT_BYTES = 400 * 2**20   # above this, 'auto' prefilters and keeps the no
 
 
 def build(pbf: str, output: str, *, language="en", city_level=8, search=True, max_leaf_bytes=16384,
-          keep_scratch=False, log=print, prefilter_mode="auto", node_index="auto") -> dict:
+          keep_scratch=False, log=print, prefilter_mode="auto", node_index="auto", poi=True) -> dict:
     """prefilter_mode: auto|always|never (osmium-tool pre-filtering, see prefilter.py);
     node_index: auto|memory|disk (where libosmium keeps node locations)."""
     out_path = Path(output)
@@ -215,12 +223,12 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
     use_prefilter = prefilter_mode == "always" or (prefilter_mode == "auto" and big and osmium_available())
     boundaries = None
     if use_prefilter:
-        boundaries, pbf_in = prefilter(pbf, tmpdir, log)
+        boundaries, pbf_in = prefilter(pbf, tmpdir, log, poi=poi)
     else:
         pbf_in = pbf
     on_disk = node_index == "disk" or (node_index == "auto" and big)
     idx = f"sparse_file_array,{Path(tmpdir) / 'nodes.idx'}" if on_disk else "flex_mem"
-    ex = extract(pbf_in, scratch_path, city_level, log, boundaries_pbf=boundaries, node_index=idx)
+    ex = extract(pbf_in, scratch_path, city_level, log, boundaries_pbf=boundaries, node_index=idx, poi=poi)
     if not keep_scratch:   # large and no longer needed
         for f in ("nodes.idx.1", "nodes.idx.2", "boundaries.pbf", "features.pbf"):
             (Path(tmpdir) / f).unlink(missing_ok=True)
@@ -229,11 +237,16 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
     order = sorted(ex.groups, key=lambda g: (g[2], normalize_key(g[1])))
     final_id = {g[0]: i + 1 for i, g in enumerate(order)}
 
+    # final POI ids: dense, ordered by (city, normalized name), like streets
+    scratch = sqlite3.connect(scratch_path)
+    prows = sorted(scratch.execute("SELECT rowid, name, cls, rank, city, lon, lat FROM poi"),
+                   key=lambda r: (r[4], normalize_key(r[1]), r[0]))
+    poi_id = {r[0]: i + 1 for i, r in enumerate(prows)}
+
     db = sqlite3.connect(out_path)
     db.executescript(f"PRAGMA page_size={PAGE_SIZE}; PRAGMA journal_mode=off; PRAGMA synchronous=off;" + SCHEMA)
-    scratch = sqlite3.connect(scratch_path)
     log("stage 2: cells")
-    w = build_cells(ex, scratch, db, final_id, max_leaf_bytes, log)
+    w = build_cells(ex, scratch, db, final_id, max_leaf_bytes, log, poi_id)
 
     log("stage 3: tables")
     db.executemany("INSERT INTO admin VALUES (?,?,?,?,?,?)",
@@ -244,7 +257,14 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
         srows.append((final_id[tmp], name, city, round(lat * 1e6), round(lon * 1e6)))
     db.executemany("INSERT INTO street VALUES (?,?,?,?,?)", srows)
 
+    db.executemany("INSERT INTO poi VALUES (?,?,?,?,?,?,?)",
+                   [(poi_id[rid], name, cls, rank, city, round(lat * 1e6), round(lon * 1e6))
+                    for rid, name, cls, rank, city, lon, lat in prows])
+
     post = defaultdict(set)
+    for rid, name, _cls, _rank, city, _lon, _lat in prows:
+        for t in set(normalize_tokens(name)):
+            post[(t, POI_PARENT - city)].add(poi_id[rid])   # POI namespace: parent <= -2, never mixes with streets
     for a in ex.admins:
         for t in set(normalize_tokens(a.name)):
             post[(t, -1)].add(a.id)
@@ -280,6 +300,8 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
         emit(sid, [])
 
     caps = ["reverse"] + (["search", "housenumber", "interpolation"] if search else [])
+    if poi:
+        caps.append("poi")
     meta = {
         "format_version": FORMAT_VERSION,
         "created_utc": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
@@ -305,6 +327,6 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
     db.execute("VACUUM")
     db.close()
     stats = dict(size=out_path.stat().st_size, cells=w.n_leaf, split_markers=w.n_split, streets=len(srows),
-                 housenumbers=n_hn, admins=len(ex.admins))
+                 housenumbers=n_hn, admins=len(ex.admins), pois=len(prows))
     log(f"done: {stats}")
     return stats

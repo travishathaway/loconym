@@ -55,6 +55,11 @@ Given `"Am Wall 12a, Bremen"`:
    Otherwise a matching interpolation line is used, with odd/even parity respected and the position proportional
    to the distance along the line (`interpolated: true`). Otherwise the result stays on the street.
 
+**Places.** If the database has the `poi` capability and the query has no house number, the same words are also
+looked up in the POI index (same normalization, city narrowing and prefix rule). POIs and streets are scored
+together; at equal scores a more prominent POI comes first, then streets. See
+[What counts as a POI](pois.md).
+
 To bound the cost in range mode, at most 200 index rows are read per word, and only the first 50 candidates are
 scored.
 

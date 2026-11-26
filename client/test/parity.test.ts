@@ -26,6 +26,7 @@ describe('python parity (golden vectors)', () => {
         streets: c.streets.map((s) => [s.id, s.pts]),
         addrs: c.addrs.map((a) => [a.streetId, a.housenumber, a.lon, a.lat]),
         interps: c.interps.map((i) => [i.streetId, i.step, i.first, i.last, i.pts]),
+        pois: c.pois.map((p) => [p.id, p.lon, p.lat]),
       };
       expect(deepClose(got, e, '$', 1e-12)).toEqual([]);
     }
