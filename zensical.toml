@@ -54,6 +54,7 @@ nav = [
 [project.theme]
 logo = "assets/logo/svg/loconym-medium.svg"
 favicon = "assets/logo/png/loconym-small-16.png"
+custom_dir = "overrides"
 language = "en"
 features = [
   "navigation.tabs",
