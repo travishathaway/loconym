@@ -39,7 +39,7 @@ Open <http://localhost:5173>. The task builds the client first, then starts the 
 
 ## 3. Try it
 
-- **Search**: type an address, e.g. `Unter den Linden 77`. Results appear as you type. Click one to fly to it.
+- **Search**: type an address (`Unter den Linden 77`), a place (`Pergamonmuseum`) or a category (`museums in Berlin`). Places show their type and address below the name; type a chain plus a street, such as `Netto Mecklenburgische Straße`, to find one branch. Results appear as you type. Click one to fly to it.
 - **Reverse geocode**: click anywhere inside the dashed outline of the database's coverage.
 - **Dataset**: switch between Berlin and Monaco.
 - **Data retrieval**:

@@ -1,4 +1,4 @@
-import { decodeHousenumbers, decodeLeaf, decodePostings, isSplit, type Cell, type Pt } from './format.js';
+import { decodeHousenumbers, decodeIdList, decodeLeaf, decodePostings, isSplit, type Cell, type Pt } from './format.js';
 import { normalizeTokens } from './normalize.js';
 import { openFetch } from './storage/fetch.js';
 import { openRange } from './storage/range.js';
@@ -28,7 +28,7 @@ export interface ReverseOptions {
   /** Also report a named POI within 50 m (below an exact address, above a street). Needs the `poi` capability. */
   pois?: boolean;
 }
-export interface PoiInfo { id: number; name: string; class: string }
+export interface PoiInfo { id: number; name: string; class: string; street: string | null; housenumber: string | null }
 export interface ReverseResult {
   kind: 'addr' | 'street' | 'poi' | null;
   poi: PoiInfo | null;
@@ -67,6 +67,9 @@ export interface SearchResult {
   lat: number;
   lon: number;
   score: number;
+  /** Street of a POI (`kind: 'poi'`), from its address tags or the nearest address/street; null if unknown. */
+  street?: string | null;
+  /** House number: the located number on a street hit, or the POI's own house number. */
   housenumber: string | null;
   interpolated?: boolean;
   display_name: string;
@@ -231,7 +234,9 @@ export class Loconym {
 
     const [streetRow, poiRow, adminRows] = await Promise.all([
       kind && kind !== 'poi' ? this.db.all('SELECT name FROM street WHERE id=?', [bestSid]) : Promise.resolve([] as unknown[][]),
-      kind === 'poi' ? this.db.all('SELECT name,class FROM poi WHERE id=?', [bestSid]) : Promise.resolve([] as unknown[][]),
+      kind === 'poi'
+        ? this.db.all('SELECT name,class,street,housenumber FROM poi WHERE id=?', [bestSid])
+        : Promise.resolve([] as unknown[][]),
       Promise.all(chain.map((id) => this.db.all('SELECT id,level,name,rank FROM admin WHERE id=?', [id]))),
     ]);
     const admin: AdminArea[] = adminRows
@@ -241,18 +246,24 @@ export class Loconym {
       .sort((a, b) => b.level - a.level);
     const street = streetRow.length ? String(streetRow[0][0]) : null;
     const housenumber = bestHn;
-    const poi: PoiInfo | null = poiRow.length ? { id: bestSid, name: String(poiRow[0][0]), class: String(poiRow[0][1]) } : null;
+    const nullable = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
+    const poi: PoiInfo | null = poiRow.length
+      ? { id: bestSid, name: String(poiRow[0][0]), class: String(poiRow[0][1]), street: nullable(poiRow[0][2]), housenumber: nullable(poiRow[0][3]) }
+      : null;
 
     const address: Record<string, string> = {};
     if (poi) address[poi.class.split('=')[1]] = poi.name;
-    if (housenumber) address.house_number = housenumber;
-    if (street) address.road = street;
+    if (housenumber || poi?.housenumber) address.house_number = (housenumber || poi?.housenumber)!;
+    if (street || poi?.street) address.road = (street || poi?.street)!;
     for (const a of [...admin].reverse()) {
       const key = ADMIN_KEYS[a.level];
       if (key) address[key] = a.name;
     }
     const parts: string[] = [];
-    if (poi) parts.push(poi.name);
+    if (poi) {
+      parts.push(poi.name);
+      if (poi.street) parts.push(poi.housenumber ? `${poi.street} ${poi.housenumber}` : poi.street);
+    }
     if (street) parts.push(housenumber ? `${street} ${housenumber}` : street);
     for (const a of admin) if (!parts.includes(a.name)) parts.push(a.name);
 
@@ -333,6 +344,10 @@ export class Loconym {
       city = parts.length > 1 ? parts[parts.length - 1] : undefined;
       street = parts[0];
     }
+    if (this.caps.has('category')) {
+      const cat = await this.category(street, city);
+      if (cat) return this.finish(await this.categoryHits(cat.classes, cat.cities, limit), null);
+    }
     const toks = splitWs(street ?? '');
     let number: string | null = null;
     if (toks.length && HN_TOKEN.test(toks[toks.length - 1])) number = toks.pop()!;
@@ -357,7 +372,7 @@ export class Loconym {
     }
     const hits: SearchResult[] = [];
     let poiCand = new Set<number>();
-    if (number === null && this.caps.has('poi')) {
+    if (this.caps.has('poi')) {
       for (let i = 0; i < stoks.length; i++) {
         const t = stoks[i];
         const prefix = i === stoks.length - 1 && t.length >= minPrefix;
@@ -370,12 +385,18 @@ export class Loconym {
         poiCand = i === 0 ? ids : new Set([...poiCand].filter((x) => ids.has(x)));
       }
     }
+    const lastPrefix = stoks[stoks.length - 1].length >= minPrefix;
     for (const pid of [...poiCand].sort((a, b) => a - b).slice(0, 50)) {
-      const [row] = await this.db.all('SELECT name,class,rank,parent,lat,lon FROM poi WHERE id=?', [pid]);
-      const [name, cls, rank, parent, lat, lon] = [String(row[0]), String(row[1]), Number(row[2]), Number(row[3]), Number(row[4]), Number(row[5])];
-      const ntoks = normalizeTokens(name);
-      const score = 10 * stoks.filter((t) => ntoks.includes(t)).length - Math.abs(ntoks.length - stoks.length);
-      hits.push({ kind: 'poi', poi_id: pid, name, class: cls, rank, city_id: parent, city: null, lat: lat / 1e6, lon: lon / 1e6, score, housenumber: null, display_name: '' });
+      const hit = await this.poiHit(pid);
+      const ntoks = normalizeTokens(hit.name);
+      const sttoks = new Set(normalizeTokens(hit.street ?? ''));
+      // at least one query word must be in the POI's name: a street alone is not a place query
+      const inName = stoks.some((t, i) => ntoks.includes(t) || (i === stoks.length - 1 && lastPrefix && ntoks.some((x) => x.startsWith(t))));
+      if (!inName) continue;
+      let score = 10 * stoks.filter((t) => ntoks.includes(t) || sttoks.has(t)).length - Math.abs(ntoks.length - stoks.length);
+      if (number && hit.housenumber && number.toLowerCase() === hit.housenumber.toLowerCase()) score += 5;
+      hit.score = score;
+      hits.push(hit);
     }
     for (const sid of [...(cand ?? [])].sort((a, b) => a - b).slice(0, 50)) {
       const [row] = await this.db.all('SELECT name,parent,lat,lon FROM street WHERE id=?', [sid]);
@@ -384,25 +405,88 @@ export class Loconym {
       const score = 10 * stoks.filter((t) => ntoks.includes(t)).length - Math.abs(ntoks.length - stoks.length);
       hits.push({ kind: 'street', street_id: sid, name, city_id: parent, city: null, lat: lat / 1e6, lon: lon / 1e6, score, housenumber: null, display_name: '' });
     }
-    // equal scores: more prominent POI (lower rank) first, then streets, then id
+    // equal scores: streets first (a POI named like a street is a place *on* it), then the more prominent POI
     const idOf = (h: SearchResult): number => (h.kind === 'poi' ? h.poi_id! : h.street_id!);
     hits.sort(
       (a, b) =>
         b.score - a.score ||
+        Number(a.kind === 'poi') - Number(b.kind === 'poi') ||
         (a.rank ?? 30) - (b.rank ?? 30) ||
-        Number(a.kind === 'street') - Number(b.kind === 'street') ||
         idOf(a) - idOf(b),
     );
-    const top = hits.slice(0, limit);
+    return this.finish(hits.slice(0, limit), number);
+  }
+
+  /** Add the city and display name; locate house numbers on street hits. */
+  private async finish(top: SearchResult[], number: string | null): Promise<SearchResult[]> {
     for (const h of top) {
-      if (number && h.kind === 'street') await this.locate(h, number);
       if (h.city_id) {
         const r = await this.db.all('SELECT name FROM admin WHERE id=?', [h.city_id]);
         h.city = r.length ? String(r[0][0]) : null;
       }
-      h.display_name = [h.housenumber ? `${h.name} ${h.housenumber}` : h.name, h.city].filter(Boolean).join(', ');
+      if (h.kind === 'street') {
+        if (number) await this.locate(h, number);
+        h.display_name = [h.housenumber ? `${h.name} ${h.housenumber}` : h.name, h.city].filter(Boolean).join(', ');
+      } else {
+        const addr = h.street && h.housenumber ? `${h.street} ${h.housenumber}` : h.street;
+        h.display_name = [h.name, addr, h.city].filter(Boolean).join(', ');
+      }
     }
     return top;
+  }
+
+  private async poiHit(pid: number): Promise<SearchResult> {
+    const [row] = await this.db.all('SELECT name,class,rank,parent,lat,lon,street,housenumber FROM poi WHERE id=?', [pid]);
+    const nullable = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
+    return {
+      kind: 'poi', poi_id: pid, name: String(row[0]), class: String(row[1]), rank: Number(row[2]), city_id: Number(row[3]), city: null,
+      lat: Number(row[4]) / 1e6, lon: Number(row[5]) / 1e6, score: 0, street: nullable(row[6]), housenumber: nullable(row[7]), display_name: '',
+    };
+  }
+
+  // ---------------------------------------------------------------- category queries
+  /** "museums in Bremen" / "museums, Bremen" -> classes and cities, or null to search normally. */
+  private async category(street: string | undefined, city: string | undefined): Promise<{ classes: string[]; cities: Set<number> } | null> {
+    const toks = normalizeTokens(street ?? '');
+    if (!toks.length) return null;
+    const options: [number, string | null][] = [];
+    if (city) options.push([toks.length, city]);
+    else for (let n = Math.min(3, toks.length - 1); n >= 1; n--) options.push([n, null]);
+    const connectors = (this.meta.connectors ?? '').split('|').filter(Boolean).map((c) => c.split(' '));
+    for (const [n, fixedPlace] of options) {
+      const rows = await this.db.all('SELECT class FROM phrase WHERE token=? ORDER BY class', [toks.slice(0, n).join(' ')]);
+      if (!rows.length) continue;
+      let place = fixedPlace;
+      if (place === null) {
+        let rest = toks.slice(n);
+        for (const c of connectors) {
+          // longest first
+          if (c.every((w, i) => rest[i] === w)) {
+            rest = rest.slice(c.length);
+            break;
+          }
+        }
+        place = rest.join(' ');
+      }
+      const cities = normalizeTokens(place).length ? await this.cities(place) : new Set<number>();
+      if (cities.size) return { classes: rows.map((r) => String(r[0])), cities };
+    }
+    return null;
+  }
+
+  private async categoryHits(classes: string[], cities: Set<number>, limit: number): Promise<SearchResult[]> {
+    const ids = new Set<number>();
+    for (const c of [...cities].sort((a, b) => a - b)) {
+      for (const cls of classes) {
+        const rows = await this.db.all('SELECT postings FROM poi_class WHERE class=? AND parent=?', [cls, c]);
+        // the list is in (rank, id) order, so its first `limit` entries are the best
+        if (rows.length) for (const id of decodeIdList(bytes(rows[0][0]), limit)) ids.add(id);
+      }
+    }
+    const hits: SearchResult[] = [];
+    for (const id of [...ids].sort((a, b) => a - b)) hits.push(await this.poiHit(id));
+    hits.sort((a, b) => a.rank! - b.rank! || a.poi_id! - b.poi_id!);
+    return hits.slice(0, limit);
   }
 
   private async locate(hit: SearchResult, number: string): Promise<void> {

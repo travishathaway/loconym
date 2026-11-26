@@ -91,10 +91,10 @@ def run(path, n=300, seed=7, out=print):
         g = Loconym(_open(path))
         res = g.search(q)
         cold.append(len(_reads))
-        ids = [h["street_id"] for h in res]
+        ids = [h.get("street_id") for h in res]
         top1 += bool(ids and ids[0] == sid)
         top5 += sid in ids
-        located += any(h["street_id"] == sid and h["housenumber"] == hn for h in res)
+        located += any(h.get("street_id") == sid and h["housenumber"] == hn for h in res)
     out(f"search 'street N, city' n={len(samples)}: top1={top1 / len(samples):.1%} top5={top5 / len(samples):.1%} "
         f"number-located={located / len(samples):.1%} pages cold {_stats(cold)}")
     # type-ahead: first half of the street name (>= 3 chars) + city
@@ -105,7 +105,7 @@ def run(path, n=300, seed=7, out=print):
         g = Loconym(_open(path))
         res = g.search(f"{pre}, {city}" if city else pre)
         cold.append(len(_reads))
-        top5 += any(h["street_id"] == sid for h in res)
+        top5 += any(h.get("street_id") == sid for h in res)
     out(f"search type-ahead n={len(cold)}: top5={top5 / len(cold):.1%} pages cold {_stats(cold)}")
 
 

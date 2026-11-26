@@ -128,6 +128,21 @@ def make(name: str, pbf: str, outdir: str, n_queries: int = 150, seed: int = 11)
         city = cities.get(parent, "")
         for q in (nm, f"{nm}, {city}", nm[: max(3, len(nm) // 2)]):
             search.append({"args": {"q": q, "limit": 5}, "expected": _jsonable(g.search(q, limit=5))})
+    # POI name + address ("Netto Dammweg"), with and without the house number
+    for _pid, nm, street, hn in g.db.execute(
+            "SELECT id, name, street, housenumber FROM poi WHERE street IS NOT NULL ORDER BY rank, id LIMIT 60"):
+        for q in (f"{nm} {street}", f"{nm} {street} {hn}" if hn else f"{nm}, {street}"):
+            search.append({"args": {"q": q, "limit": 5}, "expected": _jsonable(g.search(q, limit=5))})
+    # category queries in every language, with connector words, comma form, and structured form
+    phrases = g.db.execute("SELECT token FROM phrase WHERE token IN ('museum','museen','museos','restaurants',"
+                           "'supermarkets','supermarche','churches','kirchen','iglesias','pharmacies','parks')").fetchall()
+    places = [c for (c,) in g.db.execute("SELECT DISTINCT name FROM admin WHERE level<=8 ORDER BY level DESC, id LIMIT 3")]
+    for (tok,) in phrases:
+        for place in places:
+            for q in (f"{tok} in {place}", f"{tok} near {place}", f"{tok} en {place}", f"{tok}, {place}", f"{tok} {place}"):
+                search.append({"args": {"q": q, "limit": 5}, "expected": _jsonable(g.search(q, limit=5))})
+            search.append({"args": {"street": tok, "city": place, "limit": 3},
+                           "expected": _jsonable(g.search(street=tok, city=place, limit=3))})
     # interpolation: interior housenumbers that have no real address
     n_interp = 0
     for sid, blob in rows:

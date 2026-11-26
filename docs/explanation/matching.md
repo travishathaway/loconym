@@ -55,10 +55,18 @@ Given `"Am Wall 12a, Bremen"`:
    Otherwise a matching interpolation line is used, with odd/even parity respected and the position proportional
    to the distance along the line (`interpolated: true`). Otherwise the result stays on the street.
 
-**Places.** If the database has the `poi` capability and the query has no house number, the same words are also
-looked up in the POI index (same normalization, city narrowing and prefix rule). POIs and streets are scored
-together; at equal scores a more prominent POI comes first, then streets. See
-[What counts as a POI](pois.md).
+**Places.** If the database has the `poi` capability, the same words are also looked up in the POI index (same
+normalization, city narrowing and prefix rule). A POI is indexed under its name **and its street**, so
+`Netto Dammweg` finds that branch, and `Netto Dammweg 12` prefers the one at number 12. A POI only counts if a
+query word is in its name: `Dammweg` alone returns the street, not every shop on it. POIs and streets are scored
+together; at equal scores a street comes first, then the more prominent POI. A POI result's `display_name` is
+`name, street number, city`.
+
+**Categories.** `museums in Bremen`, `Museen in Bremen`, `museos en Bremen` and `museums, Bremen` are category
+queries. If the start of the query is a known phrase (English, Spanish, German or French; plural and singular
+are separate entries) and the rest, after an optional `in`, `near`, `en`, `bei`, `dans`..., names a city, the
+result is that class of POI in that city, most prominent first. Anything else, such as `Hotel de Paris, Monaco`,
+is an ordinary search. This follows Nominatim's special phrases; see [What counts as a POI](pois.md).
 
 To bound the cost in range mode, at most 200 index rows are read per word, and only the first 50 candidates are
 scored.

@@ -21,7 +21,8 @@ def test_meta_and_size(db):
     g = Loconym.open(db)
     assert g.meta["format_version"].startswith("0.")
     assert {"reverse", "search", "housenumber"} <= g.caps
-    assert "poi" in g.caps
+    assert {"poi", "category"} <= g.caps
+    assert g.meta["format_version"] == "0.3"
     assert db.stat().st_size < 400_000
 
 
@@ -70,7 +71,7 @@ def test_search_housenumber_located(db):
     name = g.db.execute("SELECT name FROM street WHERE id=?", (sid,)).fetchone()[0]
     hn, lon, lat = decode_housenumbers(bytes(blob)).addrs[0]
     res = g.search(f"{name} {hn}")
-    hit = next(h for h in res if h["street_id"] == sid)
+    hit = next(h for h in res if h.get("street_id") == sid)
     assert abs(hit["lon"] - lon) < 1e-6 and abs(hit["lat"] - lat) < 1e-6 and hit["housenumber"] == hn
 
 
@@ -89,6 +90,47 @@ def test_poi_search_and_reverse(db):
     assert all(g.reverse(lon / 1e6, lat / 1e6, 18)["kind"] != "poi" for _i, _n, _c, lat, lon in pois)
 
 
+def test_poi_addresses_in_search(db):
+    g = Loconym.open(db)
+    n, with_street = g.db.execute("SELECT count(*), count(street) FROM poi").fetchone()
+    assert with_street / n > 0.5   # tags plus snapping give most POIs a street
+    pid, name, street, hn = g.db.execute(
+        "SELECT id, name, street, housenumber FROM poi WHERE street IS NOT NULL AND housenumber IS NOT NULL "
+        "ORDER BY rank, id LIMIT 1").fetchone()
+    hits = g.search(f"{name} {street}", limit=5)
+    assert hits and hits[0]["kind"] == "poi" and hits[0]["poi_id"] == pid
+    assert hits[0]["street"] == street and hits[0]["housenumber"] == hn
+    assert street in hits[0]["display_name"] and hits[0]["display_name"].startswith(name)
+    # a street alone is not a place query
+    assert all(h["kind"] == "street" for h in g.search(street, limit=10))
+    # the house number picks the branch
+    assert g.search(f"{name} {street} {hn}", limit=1)[0]["poi_id"] == pid
+    # reverse reports the same address
+    lat, lon = g.db.execute("SELECT lat, lon FROM poi WHERE id=?", (pid,)).fetchone()
+    r = g.reverse(lon / 1e6, lat / 1e6, 18, pois=True)
+    if r["kind"] == "poi":
+        assert r["poi"]["street"] and r["display_name"].startswith(r["poi"]["name"])
+
+
+def test_category_queries(db):
+    g = Loconym.open(db)
+    classes = {c for (c,) in g.db.execute("SELECT DISTINCT class FROM poi")}
+    assert "amenity=restaurant" in classes
+    for q in ("restaurants in Monaco", "restaurantes en Monaco", "restaurants, Monaco", "Restaurants near Monaco"):
+        hits = g.search(q, limit=5)
+        assert len(hits) == 5 and all(h["kind"] == "poi" and h["class"] == "amenity=restaurant" for h in hits), q
+        assert [h["rank"] for h in hits] == sorted(h["rank"] for h in hits)
+    assert g.search(street="restaurants", city="Monaco", limit=3)[0]["class"] == "amenity=restaurant"
+    # languages: the same class from German and French phrases
+    de = [h["class"] for h in g.search("Hotels in Monaco", limit=3)]
+    assert de and set(de) == {"tourism=hotel"}
+    # not a category query: the place does not resolve, or there is no phrase
+    assert g.search("restaurants in Nowhereville") == []
+    # a name that starts with a phrase word is still a name search ("hotel" is a phrase; "Hotel de Paris" is not)
+    assert g.search("Hotel de Paris, Monaco", limit=1)[0]["name"] == "Hôtel de Paris"
+    assert g.search("Jardin Exotique", limit=1)[0]["name"] == "Jardin Exotique"
+
+
 def test_no_street_furniture(db):
     g = Loconym.open(db)
     classes = {c for (c,) in g.db.execute("SELECT DISTINCT class FROM poi")}
@@ -101,6 +143,9 @@ def test_poi_disabled(tmp_path):
     g = Loconym.open(out)
     assert "poi" not in g.caps
     assert g.db.execute("SELECT count(*) FROM poi").fetchone()[0] == 0
+    assert g.db.execute("SELECT count(*) FROM phrase").fetchone()[0] == 0
+    assert "category" not in g.caps
+    assert all(h["kind"] == "street" for h in g.search("Avenue", limit=5))
 
 
 def test_search_none_capability(tmp_path):

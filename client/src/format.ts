@@ -120,3 +120,11 @@ export function decodePostings(blob: Uint8Array): number[] {
   }
   return out;
 }
+
+/** Plain varints in stored order (ranked category lists); `limit` stops early. */
+export function decodeIdList(blob: Uint8Array, limit?: number): number[] {
+  const r = new Reader(blob);
+  const out: number[] = [];
+  while (r.more() && (limit === undefined || out.length < limit)) out.push(r.v());
+  return out;
+}

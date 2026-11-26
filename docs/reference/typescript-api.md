@@ -57,7 +57,7 @@ covers. Throws `CapabilityError` if the database has no `reverse` capability.
 | Property | Type | Description |
 |---|---|---|
 | `kind` | `'addr' \| 'street' \| 'poi' \| null` | What was matched: an address point within 40 m, a named POI within 50 m (only with `pois: true`), the nearest street, or nothing (admin areas only). |
-| `poi` | `{ id, name, class } \| null` | The matched POI when `kind` is `'poi'`; `class` is `key=value`, e.g. `tourism=museum`. |
+| `poi` | `{ id, name, class, street, housenumber } \| null` | The matched POI when `kind` is `'poi'`; `class` is `key=value`, e.g. `tourism=museum`; `street` and `housenumber` are `null` when unknown. |
 | `street` | `string \| null` | Street name. |
 | `housenumber` | `string \| null` | House number, when `kind` is `'addr'`. |
 | `street_id` | `number \| null` | Internal street id. |
@@ -111,7 +111,7 @@ Example (Monaco):
 search(options: SearchOptions | string): Promise<SearchResult[]>
 ```
 
-Finds streets, house numbers on them and (if the database has the `poi` capability) named points of interest matching a text query. A query with a house number only returns streets. A string argument is shorthand for `{ q: string }`.
+Finds streets, house numbers on them and (if the database has the `poi` capability) named points of interest matching a text query. A POI is indexed under its name and its street, so `"Netto Dammweg"` finds that branch, and a housenumber in the query prefers the POI with that number. If the database has the `category` capability, `"museums in Bremen"`, `"Museen in Bremen"`, `"museos en Bremen"` and `"museums, Bremen"` return that class of POI in that city, most prominent first (see [matching](../explanation/matching.md#search)); text that does not start with a known phrase and end in a city is an ordinary search. A string argument is shorthand for `{ q: string }`.
 Returns at most `limit` results, best first. It returns an empty array when nothing matches, or when the city part
 matches no area. Throws `CapabilityError` if the database was built with `--search none`.
 
@@ -133,13 +133,14 @@ matches no area. Throws `CapabilityError` if the database was built with `--sear
 | `street_id` | `number \| undefined` | Internal street id (`kind: 'street'`). |
 | `poi_id`, `class`, `rank` | `number`, `string`, `number` \| `undefined` | POI id, `key=value` class and prominence (lower is more prominent) (`kind: 'poi'`). |
 | `name` | `string` | Street or POI name. |
+| `street` | `string \| null \| undefined` | The POI's street (`kind: 'poi'`): its address tag, or the nearest address or street. |
 | `city_id` | `number` | Admin id of the street's city-level area (`0` if none). |
 | `city` | `string \| null` | Name of that area. |
 | `lat`, `lon` | `number` | The house if the number was found, otherwise a point on the street's longest way. |
 | `score` | `number` | Ranking score (higher is better). Only meaningful within one result list. |
-| `housenumber` | `string \| null` | The house number, if the query had one and it was located. |
+| `housenumber` | `string \| null` | Street hit: the house number, if the query had one and it was located. POI hit: the POI's own house number, if known. |
 | `interpolated` | `boolean \| undefined` | `true` if the position comes from an address interpolation line. |
-| `display_name` | `string` | Formatted, e.g. `"Avenue des Papalins 9, Monaco"`. |
+| `display_name` | `string` | Formatted, e.g. `"Avenue des Papalins 9, Monaco"`; for a POI `"Netto, Dammweg 12, Bremen"`. |
 
 ### `geocoder.capabilities`
 
@@ -147,7 +148,7 @@ matches no area. Throws `CapabilityError` if the database was built with `--sear
 readonly capabilities: string[]
 ```
 
-What the database supports: some of `reverse`, `search`, `housenumber`, `interpolation` and `poi`.
+What the database supports: some of `reverse`, `search`, `housenumber`, `interpolation`, `poi` and `category`.
 
 ### `geocoder.meta`
 

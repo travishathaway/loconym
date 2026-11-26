@@ -89,6 +89,12 @@ function setActive(i: number) {
   else qInput.removeAttribute('aria-activedescendant');
 }
 
+/** "Supermarket" from `shop=supermarket`. */
+const poiType = (r: SearchResult): string => (r.class ?? '').split('=')[1]?.replace(/_/g, ' ') ?? '';
+/** "Dammweg 12, Bremen": the POI's address line (street and number, then city). */
+const poiAddress = (r: SearchResult): string =>
+  [r.street ? (r.housenumber ? `${r.street} ${r.housenumber}` : r.street) : '', r.city ?? ''].filter(Boolean).join(', ');
+
 function render(results: SearchResult[]) {
   items = results;
   active = -1;
@@ -97,7 +103,16 @@ function render(results: SearchResult[]) {
     const li = document.createElement('li');
     li.id = `opt-${i}`;
     li.setAttribute('role', 'option');
-    li.textContent = r.display_name;
+    if (r.kind === 'poi') {
+      // places show their name and, below it, what they are and where: "Supermarket · Dammweg 12, Bremen"
+      const name = document.createElement('span');
+      name.textContent = r.name;
+      const where = document.createElement('small');
+      where.textContent = [poiType(r), poiAddress(r)].filter(Boolean).join(' · ');
+      li.append(name, where);
+    } else {
+      li.textContent = r.display_name;
+    }
     if (r.interpolated) {
       const s = document.createElement('small');
       s.textContent = 'interpolated house number';
@@ -161,7 +176,7 @@ async function pick(r: SearchResult) {
   qInput.blur();
   if (map) {
     marker.setLngLat([r.lon, r.lat]).addTo(map);
-    map.flyTo({ center: [r.lon, r.lat], zoom: r.housenumber ? 17 : 15, duration: 1200 });
+    map.flyTo({ center: [r.lon, r.lat], zoom: r.housenumber || r.kind === 'poi' ? 17 : 15, duration: 1200 });
   }
 
   const coords: [string, string][] = [['coordinates', `${r.lat.toFixed(6)}, ${r.lon.toFixed(6)}`]];
@@ -174,10 +189,18 @@ async function pick(r: SearchResult) {
   if (!rev || seq !== pickSeq || detailsEl.hidden) return;
   // The nearest address may be on another street or have another number, so keep the picked result's own.
   const { house_number: _h, road: _r, ...area } = rev.address;
-  const own: [string, string][] = [
-    ...(r.housenumber ? ([['house_number', r.housenumber]] as [string, string][]) : []),
-    ['road', r.name],
-  ];
+  const own: [string, string][] =
+    r.kind === 'poi'
+      ? [
+          ['place', r.name],
+          ['type', poiType(r)],
+          ...(r.housenumber ? ([['house_number', r.housenumber]] as [string, string][]) : []),
+          ...(r.street ? ([['road', r.street]] as [string, string][]) : []),
+        ]
+      : [
+          ...(r.housenumber ? ([['house_number', r.housenumber]] as [string, string][]) : []),
+          ['road', r.name],
+        ];
   showDetails(r.display_name, [...own, ...Object.entries(area), ...note, ...coords]);
 }
 

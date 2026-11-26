@@ -13,8 +13,8 @@ const detailEl = $('detail');
 const statusEl = $('status');
 
 const PLACEHOLDER: Record<string, string> = {
-  berlin: 'Search an address, e.g. Unter den Linden 77',
-  monaco: 'Search an address, e.g. Avenue Princesse Grace',
+  berlin: 'Address, place or category: Unter den Linden 77, museums in Berlin',
+  monaco: 'Address, place or category: Avenue Princesse Grace, restaurants in Monaco',
 };
 
 // 'range' mode needs a cross-origin-isolated page (see vite.config.ts). Without it, offer only 'fetch'.
@@ -116,7 +116,7 @@ async function open() {
 map.on('click', async (ev) => {
   if (!geocoder) return;
   const t0 = performance.now();
-  const r: ReverseResult | null = await geocoder.reverse({ lat: ev.lngLat.lat, lon: ev.lngLat.lng, zoom: 18 });
+  const r: ReverseResult | null = await geocoder.reverse({ lat: ev.lngLat.lat, lon: ev.lngLat.lng, zoom: 18, pois: true });
   const ms = Math.round(performance.now() - t0);
   if (!r) {
     setStatus(`No data at this point (${ms} ms). Click inside the dashed area.`);
@@ -124,12 +124,18 @@ map.on('click', async (ev) => {
   }
   show(r.lat, r.lon);
   showDetail(r.display_name || '(no address)', [
-    ['match', r.kind === 'addr' ? 'address' : r.kind === 'street' ? 'nearest street' : 'area only'],
+    ['match', r.kind === 'addr' ? 'address' : r.kind === 'poi' ? 'place' : r.kind === 'street' ? 'nearest street' : 'area only'],
     ...(r.distance_m != null ? ([['distance', `${r.distance_m} m`]] as [string, string][]) : []),
     ...Object.entries(r.address),
   ]);
   setStatus(`Reverse geocoded in ${ms} ms`);
 });
+
+/** "Supermarket" from `shop=supermarket`. */
+const poiType = (r: SearchResult): string => (r.class ?? '').split('=')[1]?.replace(/_/g, ' ') ?? '';
+/** "Dammweg 12, Bremen": the POI's address line (street and number, then city). */
+const poiAddress = (r: SearchResult): string =>
+  [r.street ? (r.housenumber ? `${r.street} ${r.housenumber}` : r.street) : '', r.city ?? ''].filter(Boolean).join(', ');
 
 function renderResults(items: SearchResult[]) {
   resultsEl.replaceChildren();
@@ -137,7 +143,15 @@ function renderResults(items: SearchResult[]) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'list-group-item list-group-item-action px-2 py-1';
-    btn.textContent = r.display_name;
+    if (r.kind === 'poi') {
+      btn.textContent = r.name;
+      const where = document.createElement('small');
+      where.className = 'd-block text-body-secondary';
+      where.textContent = [poiType(r), poiAddress(r)].filter(Boolean).join(' · ');
+      btn.append(where);
+    } else {
+      btn.textContent = r.display_name;
+    }
     if (r.interpolated) {
       const s = document.createElement('small');
       s.className = 'd-block text-body-secondary';
@@ -146,11 +160,13 @@ function renderResults(items: SearchResult[]) {
     }
     btn.addEventListener('click', () => {
       for (const el of resultsEl.children) el.classList.toggle('active', el === btn);
-      show(r.lat, r.lon, r.housenumber ? 18 : 16);
+      show(r.lat, r.lon, r.housenumber || r.kind === 'poi' ? 18 : 16);
       showDetail(r.display_name, [
         ['lat', r.lat.toFixed(6)],
         ['lon', r.lon.toFixed(6)],
-        ['street id', String(r.street_id)],
+        ...(r.kind === 'poi'
+          ? ([['place', r.name], ['type', poiType(r)], ['address', poiAddress(r)]] as [string, string][])
+          : ([['street id', String(r.street_id)]] as [string, string][])),
         ...(r.interpolated ? ([['note', 'house number interpolated']] as [string, string][]) : []),
       ]);
     });

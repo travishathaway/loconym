@@ -20,14 +20,16 @@ street(id INTEGER PRIMARY KEY, name TEXT, parent INT, lat INT, lon INT);        
 cell(id INTEGER PRIMARY KEY, data BLOB);
 term(t TEXT, parent INT, postings BLOB, PRIMARY KEY(t, parent)) WITHOUT ROWID;
 housenumber(street_id INTEGER PRIMARY KEY, data BLOB);
-poi(id INTEGER PRIMARY KEY, name TEXT, class TEXT, rank INT, parent INT, lat INT, lon INT);    -- format 0.2; see §4a
+poi(id INTEGER PRIMARY KEY, name TEXT, class TEXT, rank INT, parent INT, lat INT, lon INT, street TEXT, housenumber TEXT);   -- format 0.2+; see §4a
+phrase(token TEXT, class TEXT, PRIMARY KEY(token, class)) WITHOUT ROWID;                                                   -- format 0.3; see §4b
+poi_class(class TEXT, parent INT, postings BLOB, PRIMARY KEY(class, parent)) WITHOUT ROWID;                                -- format 0.3; see §4b
 ```
 - `admin.city`: the nearest ancestor-or-self with `level <= 8` (0 if none); this is the "municipality" streets are grouped under. (Germany-specific default; the level is a build option stored in `meta`.)
 - `admin.rank` follows Nominatim's place_rank scale (country 4, state 8, county 12, city 16, suburb 20, ...), derived from `level` through a table in `meta`.
 - A **street** is a group of OSM ways with the same normalized name inside the same city area. Ids are dense, assigned in sorted `(parent, normalized name)` order so neighbouring ids share strings and b-tree pages.
 
 ### meta keys
-`format_version`, `created_utc`, `source` (file name), `osm_timestamp`, `bbox` (minlon,minlat,maxlon,maxlat), `language`, `capabilities` (comma list: `reverse`, `search`, `housenumber`, `interpolation`, `poi`), `cell_zoom` (16), `coord_quantum` (1e-6), `city_level` (8), `attribution` ("© OpenStreetMap contributors, ODbL 1.0"), `normalizer` (version string, see §6).
+`format_version`, `created_utc`, `source` (file name), `osm_timestamp`, `bbox` (minlon,minlat,maxlon,maxlat), `language`, `capabilities` (comma list: `reverse`, `search`, `housenumber`, `interpolation`, `poi`, `category`), `connectors` (`|`-separated normalized words that may sit between a category phrase and a place, longest first; present when `poi` is), `cell_zoom` (16), `coord_quantum` (1e-6), `city_level` (8), `attribution` ("© OpenStreetMap contributors, ODbL 1.0"), `normalizer` (version string, see §6).
 
 ## 3. Cells (reverse geocoding)
 Key: `id = (1 << 2z) | morton(x, y)` for web-mercator tile `(x, y)` at zoom `z`; the leading sentinel bit makes keys unique across zooms. Base zoom `z = cell_zoom` (16). Cells with no features and no admin coverage are absent (a lookup outside the dataset returns "no result"). Featureless areas that are covered by admin polygons are stored as one admin-only leaf at the coarsest quadtree node (≥ `root_zoom`, 12) that has no features, so lookups probe `cell_zoom` first and then each ancestor up to `root_zoom`; the first row found wins. Tiles with features are always stored at `cell_zoom` (or below it, via a split marker), so the common lookup is a single probe.
@@ -60,16 +62,23 @@ Address points for building areas use a point inside the building (representativ
 - `housenumber(street_id)`: `n` addresses sorted by natural housenumber order; per entry `len`, UTF-8 number, `Δlat`, `Δlon` (first relative to 0), coordinates as integers of 1e-7° **[measure: 1e-6]**; then `m` interpolation segments (`step`, `first`, `last`, `point_count`, absolute points at 1e-6°).
 
 ### 4a. POIs
-`poi(id, name, class, rank, parent, lat, lon)`: one row per named, allowlisted OSM object (see [What counts as a POI](../explanation/pois.md)). `class` is `key=value` of the winning main tag (`tourism=museum`); `rank` is a build-time prominence (lower = more prominent, Nominatim's `rank_search` scale, reduced for objects with a `wikidata`/`wikipedia` tag); `parent` is the city-level admin id; `lat`/`lon` are 1e-6°, a node's location or an area's representative point. Ids are dense in `(parent, normalized name)` order.
+`poi(id, name, class, rank, parent, lat, lon, street, housenumber)`: one row per named, allowlisted OSM object (see [What counts as a POI](../explanation/pois.md)). `class` is `key=value` of the winning main tag (`tourism=museum`); `rank` is a build-time prominence (lower = more prominent, Nominatim's `rank_search` scale, reduced for objects with a `wikidata`/`wikipedia` tag); `parent` is the city-level admin id; `lat`/`lon` are 1e-6°, a node's location or an area's representative point. Ids are dense in `(parent, normalized name)` order. `street`/`housenumber` (format 0.3, NULL when unknown) are the POI's own `addr:street` and `addr:housenumber`; when it has no `addr:street` the builder uses the nearest address point within 40 m (street and number), else the nearest named street way within 60 m (street only).
 
-POI postings live in `term` in their own namespace: `parent = -2 - city` (so `-2` = no city). `parent = -1` stays admin and `parent >= 0` stays streets; readers must not mix them. A reader can ask for "any city" POIs with `parent <= -2`.
+POI postings live in `term` in their own namespace: `parent = -2 - city` (so `-2` = no city). They list the POI under the normalized tokens of its **name and of its street**, so "Netto Dammweg" intersects to that branch. `parent = -1` stays admin and `parent >= 0` stays streets; readers must not mix them. A reader can ask for "any city" POIs with `parent <= -2`.
+
+### 4b. Category queries ("museums in Bremen")
+- `phrase(token, class)`: normalized phrase (§6) to `key=value` class; one row per phrase and class. Plurals and translations (en, es, de, fr) are separate rows, as in Nominatim's special phrases. The same rows are in every database, whatever `language` says.
+- `poi_class(class, parent)`: the best POIs of that class in city `parent` (0 = none): plain varint ids (not deltas) **in `(rank, id)` order**, at most 200. A reader takes the first `limit` entries per list and loads only those `poi` rows.
+- Parsing (client): take the leading 1 to 3 normalized tokens as a phrase (or the whole text before a comma, or the structured `street` parameter); strip one `meta.connectors` entry from what follows; resolve the rest as a place (§4 step 1). Only if the phrase exists **and** the place resolves to a city is it a category query. Otherwise it is an ordinary search, so "Park Hotel, Bremen" and names that start with a phrase word still work.
+- Results are POI hits sorted by `(rank, id)` over the union of the matched cities and classes.
 
 ### Search algorithm (client)
 1. Split `q` on commas. Last part (if more than one) = place: resolve tokens against `parent = -1` (exact for all but the last token; prefix scan for the last), intersect, map admin ids → `admin.city` → set of cities. Structured parameters (`street`, `city`, …) skip the split.
 2. Street part: strip a housenumber token (leading or trailing `[0-9]+[A-Za-z]?`, ASCII digits only), normalize, then for each token look up `(t, city)` for each city (prefix scan for the last token only). Intersect street ids.
 3. Cap work: prefix tokens need ≥ 3 characters (configurable), and at most `max_rows` (default 200) postings rows are read per token.
 4. Score (client-side, not stored): token coverage, exact vs prefix match, street name length difference, and a preference for larger cities. Return top `limit`.
-5. POIs (only if `poi` is a capability and the query has no housenumber token): repeat step 2 against the POI namespace (`-2 - city`, or `parent <= -2` without a city), intersect, and merge with the street candidates. Score is the same token coverage; ties go to the lower `poi.rank`, then streets, then id.
+5. POIs (only if `poi` is a capability): repeat step 2 against the POI namespace (`-2 - city`, or `parent <= -2` without a city) and intersect. A POI is a result only if at least one query word is in its **name** (the last word may be a prefix), so a street name alone returns streets only. Score: 10 per query word found in the name or the street, minus the word-count difference to the name, plus 5 if the query's housenumber equals the POI's. Ties go to streets, then to the lower `poi.rank`, then id.
+5a. Category queries (§4b) are tried first when `category` is a capability.
 6. Housenumber: look up `housenumber(street_id)`; exact match first, else the interpolation segment covering the number (matching parity), positioned by proportional distance along the polyline; else the street's own `lat`/`lon` (a point on its longest way).
 
 ## 5. Capabilities
@@ -83,7 +92,7 @@ Version string `meta.normalizer`, golden vectors in `fixtures/normalizer.json`, 
 4. A token ending in `str` with length > 3 gets `asse` appended (`hauptstr` → `hauptstrasse`). Language-specific abbreviation tables are **open**.
 
 ## 7. Versioning
-Format 0.2 added the `poi` table, the POI term namespace and the trailing leaf section; a 0.1 database stays valid for a 0.2 reader (no `poi` capability). `user_version` major changes on incompatible layout changes; `meta.format_version` carries `major.minor`. Readers reject a higher major and tolerate unknown `meta` keys and trailing bytes in blobs.
+Format 0.2 added the `poi` table, the POI term namespace and the trailing leaf section; 0.3 added `poi.street`/`poi.housenumber`, the `phrase` and `poi_class` tables, and the `category` capability. The client accepts any format 0.x, but a client older than 0.3 would not read `poi.street` and a 0.3 client needs a 0.3 database for those features: build and release the builder and client together. `user_version` major changes on incompatible layout changes; `meta.format_version` carries `major.minor`. Readers reject a higher major and tolerate unknown `meta` keys and trailing bytes in blobs.
 
 ## 8. Open items
-Postcodes; `addr:place` and `associatedStreet`; street names in multiple languages; `extratags`; zoom-18 buildings as non-address features; POI de-duplication across node/area pairs and class-word queries ("museum in Bremen"); multi-region merges; non-Latin normalization; exact `max_leaf_bytes`.
+Postcodes; `addr:place` and `associatedStreet`; street names in multiple languages; `extratags`; zoom-18 buildings as non-address features; POI de-duplication across node/area pairs; category queries without a place ("pharmacy" near a point or viewport); multi-region merges; non-Latin normalization; exact `max_leaf_bytes`.
