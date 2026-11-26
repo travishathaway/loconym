@@ -118,7 +118,7 @@ SCRATCH_SCHEMA = """
 CREATE TABLE way(gid INT, root INT, wkb BLOB);
 CREATE TABLE addr(gid INT, root INT, hn TEXT, lon REAL, lat REAL);
 CREATE TABLE anode(id INTEGER PRIMARY KEY, hn TEXT, street TEXT);
-CREATE TABLE poi(root INT, name TEXT, cls TEXT, rank INT, city INT, lon REAL, lat REAL);
+CREATE TABLE poi(root INT, name TEXT, cls TEXT, rank INT, city INT, lon REAL, lat REAL, street TEXT, hn TEXT);
 """
 
 
@@ -203,7 +203,8 @@ class _Collector(osmium.SimpleHandler):
         if c is None:
             return
         key, value, rank = c
-        self.poi_buf.append((poi_name(tags), f"{key}={value}", rank, lon, lat))
+        self.poi_buf.append((poi_name(tags), f"{key}={value}", rank, lon, lat, tags.get("addr:street") or None,
+                             tags.get("addr:housenumber") or None))
         if len(self.poi_buf) >= BATCH:
             self.flush_pois()
 
@@ -219,11 +220,11 @@ class _Collector(osmium.SimpleHandler):
             return
         cities = self.assigner.assign([b[3] for b in buf], [b[4] for b in buf])
         rows = []
-        for (name, cls, rank, lon, lat), city in zip(buf, cities):
+        for (name, cls, rank, lon, lat, street, hn), city in zip(buf, cities):
             self._grow_bbox(lon, lat, lon, lat)
             rx, ry = lonlat_tile(lon, lat, ROOT_ZOOM)
-            rows.append((root_key(rx, ry), name, cls, rank, city, lon, lat))
-        self.db.executemany("INSERT INTO poi VALUES (?,?,?,?,?,?,?)", rows)
+            rows.append((root_key(rx, ry), name, cls, rank, city, lon, lat, street, hn))
+        self.db.executemany("INSERT INTO poi VALUES (?,?,?,?,?,?,?,?,?)", rows)
         self.n_pois += len(buf)
 
     def flush_ways(self):

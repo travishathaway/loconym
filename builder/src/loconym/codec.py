@@ -285,3 +285,18 @@ def decode_postings(blob: bytes) -> list[int]:
         acc += r.v()
         out.append(acc)
     return out
+
+
+def encode_id_list(ids) -> bytes:
+    """Ids in the given order as plain varints (used where order matters: ranked category lists)."""
+    out = bytearray()
+    for i in ids:
+        put_varint(out, i)
+    return bytes(out)
+
+
+def decode_id_list(blob: bytes, limit: int | None = None) -> list[int]:
+    r, out = Reader(blob), []
+    while r.more() and (limit is None or len(out) < limit):
+        out.append(r.v())
+    return out

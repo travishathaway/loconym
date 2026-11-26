@@ -68,10 +68,24 @@ describe('range mode traffic', () => {
     const s = g.search.slice(0, 10);
     for (const c of s) await geocoder.search(c.args);
     await geocoder.close();
-    const fileSize = 4513792;
+    const fileSize = 4743168;
     console.log(`bremen range: open=${afterOpen.bytes} B/${afterOpen.ranges} req, total=${server.stats.bytes} B / ${server.stats.ranges} range requests for 30 queries (file ${fileSize} B)`);
     expect(server.stats.bytes).toBeLessThan(fileSize * 0.6);
     expect(server.stats.ranges).toBeGreaterThan(0);
+  });
+});
+
+describe('category queries in range mode', () => {
+  it.skipIf(!hasFixture('bremen'))('read a handful of pages, not a table', async () => {
+    const geocoder = await Loconym.open({ url: server.url('bremen.sqlite'), mode: 'range' });
+    expect(geocoder.capabilities).toContain('category');
+    server.reset();
+    const hits = await geocoder.search({ q: 'Museen in Bremen', limit: 5 });
+    await geocoder.close();
+    expect(hits).toHaveLength(5);
+    expect(hits.every((h) => h.kind === 'poi' && h.class === 'tourism=museum')).toBe(true);
+    // phrase lookup + city lookup + one ranked list + 5 POI rows
+    expect(server.stats.bytes).toBeLessThan(150_000);
   });
 });
 

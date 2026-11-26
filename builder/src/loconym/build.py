@@ -15,6 +15,7 @@ from .codec import (
     StreetNumbers,
     cell_key,
     encode_housenumbers,
+    encode_id_list,
     encode_leaf,
     encode_postings,
     encode_split,
@@ -23,10 +24,12 @@ from .codec import (
 )
 from .extract import ROOT_ZOOM, extract, root_key, root_xy
 from .normalize import NORMALIZER_VERSION, normalize_key, normalize_tokens
+from .poi import CATEGORY_LIMIT, connectors, phrase_rows
 from .prefilter import available as osmium_available
 from .prefilter import prefilter
+from .snap import snap_pois
 
-FORMAT_VERSION = "0.2"
+FORMAT_VERSION = "0.3"
 CELL_ZOOM = 16
 MAX_SPLIT_ZOOM = 19
 PAGE_SIZE = 4096
@@ -37,7 +40,10 @@ SCHEMA = """
 CREATE TABLE meta(k TEXT PRIMARY KEY, v) WITHOUT ROWID;
 CREATE TABLE admin(id INTEGER PRIMARY KEY, level INT, name TEXT, parent INT, city INT, rank INT);
 CREATE TABLE street(id INTEGER PRIMARY KEY, name TEXT, parent INT, lat INT, lon INT);
-CREATE TABLE poi(id INTEGER PRIMARY KEY, name TEXT, class TEXT, rank INT, parent INT, lat INT, lon INT);
+CREATE TABLE poi(id INTEGER PRIMARY KEY, name TEXT, class TEXT, rank INT, parent INT, lat INT, lon INT,
+                 street TEXT, housenumber TEXT);
+CREATE TABLE phrase(token TEXT, class TEXT, PRIMARY KEY(token, class)) WITHOUT ROWID;
+CREATE TABLE poi_class(class TEXT, parent INT, postings BLOB, PRIMARY KEY(class, parent)) WITHOUT ROWID;
 CREATE TABLE cell(id INTEGER PRIMARY KEY, data BLOB);
 CREATE TABLE term(t TEXT, parent INT, postings BLOB, PRIMARY KEY(t, parent)) WITHOUT ROWID;
 CREATE TABLE housenumber(street_id INTEGER PRIMARY KEY, data BLOB);
@@ -239,8 +245,15 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
 
     # final POI ids: dense, ordered by (city, normalized name), like streets
     scratch = sqlite3.connect(scratch_path)
-    prows = sorted(scratch.execute("SELECT rowid, name, cls, rank, city, lon, lat FROM poi"),
-                   key=lambda r: (r[4], normalize_key(r[1]), r[0]))
+    prows = scratch.execute("SELECT rowid, name, cls, rank, city, lon, lat, street, hn, root FROM poi").fetchall()
+    street_names = {g[0]: g[1] for g in ex.groups}
+    todo = [(r[0], r[9], r[5], r[6]) for r in prows if not r[7]]   # no addr:street tag: snap to a nearby address
+    snapped = snap_pois(scratch, street_names, todo) if todo else {}
+    log(f"  POI addresses: {len(prows) - len(todo)} from tags, {len(snapped)} snapped, "
+        f"{len(todo) - len(snapped)} without")
+    prows = [(rid, name, cls, rank, city, lon, lat, *(snapped.get(rid, (None, None)) if not street else (street, hn)))
+             for rid, name, cls, rank, city, lon, lat, street, hn, _root in prows]
+    prows.sort(key=lambda r: (r[4], normalize_key(r[1]), r[0]))
     poi_id = {r[0]: i + 1 for i, r in enumerate(prows)}
 
     db = sqlite3.connect(out_path)
@@ -257,13 +270,22 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
         srows.append((final_id[tmp], name, city, round(lat * 1e6), round(lon * 1e6)))
     db.executemany("INSERT INTO street VALUES (?,?,?,?,?)", srows)
 
-    db.executemany("INSERT INTO poi VALUES (?,?,?,?,?,?,?)",
-                   [(poi_id[rid], name, cls, rank, city, round(lat * 1e6), round(lon * 1e6))
-                    for rid, name, cls, rank, city, lon, lat in prows])
+    db.executemany("INSERT INTO poi VALUES (?,?,?,?,?,?,?,?,?)",
+                   [(poi_id[rid], name, cls, rank, city, round(lat * 1e6), round(lon * 1e6), street, hn)
+                    for rid, name, cls, rank, city, lon, lat, street, hn in prows])
+    if poi:
+        db.executemany("INSERT INTO phrase VALUES (?,?)", phrase_rows())
+    by_class = defaultdict(list)
+    for rid, _name, cls, rank, city, *_ in prows:
+        by_class[(cls, city)].append((rank, poi_id[rid]))
+    db.executemany("INSERT INTO poi_class VALUES (?,?,?)",
+                   ((cls, city, encode_id_list(i for _r, i in sorted(v)[:CATEGORY_LIMIT]))   # rank order, not delta
+                    for (cls, city), v in by_class.items()))
 
     post = defaultdict(set)
-    for rid, name, _cls, _rank, city, _lon, _lat in prows:
-        for t in set(normalize_tokens(name)):
+    for rid, name, _cls, _rank, city, _lon, _lat, street, _hn in prows:
+        # name and street tokens share the POI namespace, so "Netto Dammweg" intersects to that one branch
+        for t in set(normalize_tokens(name)) | set(normalize_tokens(street or "")):
             post[(t, POI_PARENT - city)].add(poi_id[rid])   # POI namespace: parent <= -2, never mixes with streets
     for a in ex.admins:
         for t in set(normalize_tokens(a.name)):
@@ -302,6 +324,8 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
     caps = ["reverse"] + (["search", "housenumber", "interpolation"] if search else [])
     if poi:
         caps.append("poi")
+        if search:
+            caps.append("category")
     meta = {
         "format_version": FORMAT_VERSION,
         "created_utc": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
@@ -310,6 +334,8 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
         "city_level": city_level, "attribution": ATTRIBUTION, "normalizer": NORMALIZER_VERSION,
         "max_leaf_bytes": max_leaf_bytes,
     }
+    if poi:
+        meta["connectors"] = "|".join(connectors())
     db.executemany("INSERT INTO meta VALUES (?,?)", meta.items())
     db.execute("PRAGMA application_id=0x4c474154")
     db.execute("PRAGMA user_version=0")
@@ -320,7 +346,7 @@ def build(pbf: str, output: str, *, language="en", city_level=8, search=True, ma
             f.unlink()
         Path(tmpdir).rmdir()
     if not search:
-        for t in ("term", "housenumber"):  # reverse still needs street names
+        for t in ("term", "housenumber", "phrase", "poi_class"):  # reverse still needs street names
             db.execute(f"DELETE FROM {t}")
         db.commit()
     log("vacuum")
