@@ -8,7 +8,7 @@ Build a database from an OpenStreetMap `.osm.pbf` file.
 
 ```text
 loconym build [-h] -o OUTPUT [--language LANGUAGE] [--city-level CITY_LEVEL]
-              [--search {none,full}] [--max-leaf-bytes MAX_LEAF_BYTES] [--keep-scratch]
+              [--search {none,full}] [--poi | --no-poi] [--max-leaf-bytes MAX_LEAF_BYTES] [--keep-scratch]
               [--prefilter {auto,always,never}] [--node-index {auto,memory,disk}]
               input
 ```
@@ -18,6 +18,7 @@ loconym build [-h] -o OUTPUT [--language LANGUAGE] [--city-level CITY_LEVEL]
 | `input` | *(required)* | Path to the `.osm.pbf` extract. |
 | `-o`, `--output` | *(required)* | Path of the database to write. An existing file is replaced. |
 | `--search {none,full}` | `full` | `none` leaves out the search index (`term` and `housenumber` tables) to make a smaller, reverse-only database. See [Build a smaller, reverse-only database](../how-to/reverse-only.md). |
+| `--poi`, `--no-poi` | `--poi` | Index named points of interest (museums, parks, stations, shops, ...) for search and, optionally, reverse. `--no-poi` skips them for a smaller, address-only database. See [What counts as a POI](../explanation/pois.md). |
 | `--city-level N` | `8` | OSM `admin_level` that streets are grouped under. Search narrows by these areas, and a street name is unique within one. `8` is the municipality level in Germany. |
 | `--language CODE` | `en` | Recorded in the database's `meta.language`. In v0 it doesn't change which name tags are used. |
 | `--max-leaf-bytes N` | `16384` | Largest encoded size of one z16 cell. Larger cells are split into four children. |

@@ -50,19 +50,21 @@ covers. Throws `CapabilityError` if the database has no `reverse` capability.
 | `lat` | `number` | *(required)* | Latitude, WGS 84 degrees. |
 | `lon` | `number` | *(required)* | Longitude, WGS 84 degrees. |
 | `zoom` | `number` | `18` | Detail level, following Nominatim: `>= 18` may return an address, `>= 16` a street, lower values only admin areas. |
+| `pois` | `boolean` | `false` | Also match a named POI within 50 m (at `zoom >= 17`, below an exact address and above a street). Ignored without the `poi` capability. |
 
 ### `ReverseResult`
 
 | Property | Type | Description |
 |---|---|---|
-| `kind` | `'addr' \| 'street' \| null` | What was matched: an address point within 40 m, the nearest street, or nothing (admin areas only). |
+| `kind` | `'addr' \| 'street' \| 'poi' \| null` | What was matched: an address point within 40 m, a named POI within 50 m (only with `pois: true`), the nearest street, or nothing (admin areas only). |
+| `poi` | `{ id, name, class } \| null` | The matched POI when `kind` is `'poi'`; `class` is `key=value`, e.g. `tourism=museum`. |
 | `street` | `string \| null` | Street name. |
 | `housenumber` | `string \| null` | House number, when `kind` is `'addr'`. |
 | `street_id` | `number \| null` | Internal street id. |
 | `admin` | `AdminArea[]` | Containing administrative areas, deepest first. |
 | `lat`, `lon` | `number` | The matched point: the address, or the nearest point on the street. The input point if nothing matched. |
 | `distance_m` | `number \| null` | Distance from the input point to the match, in metres (0.1 m precision). |
-| `place_rank` | `number \| null` | Nominatim-style rank: 30 for an address, 26 for a street, otherwise the deepest area's rank. |
+| `place_rank` | `number \| null` | Nominatim-style rank: 30 for an address or POI, 26 for a street, otherwise the deepest area's rank. |
 | `address` | `Record<string, string>` | Nominatim-style parts: `house_number`, `road`, and area keys by admin level (see below). |
 | `display_name` | `string` | Formatted, e.g. `"Avenue des Papalins 9, Monte-Carlo, Monaco"`. |
 
@@ -109,7 +111,7 @@ Example (Monaco):
 search(options: SearchOptions | string): Promise<SearchResult[]>
 ```
 
-Finds streets, and house numbers on them, matching a text query. A string argument is shorthand for `{ q: string }`.
+Finds streets, house numbers on them and (if the database has the `poi` capability) named points of interest matching a text query. A query with a house number only returns streets. A string argument is shorthand for `{ q: string }`.
 Returns at most `limit` results, best first. It returns an empty array when nothing matches, or when the city part
 matches no area. Throws `CapabilityError` if the database was built with `--search none`.
 
@@ -127,8 +129,10 @@ matches no area. Throws `CapabilityError` if the database was built with `--sear
 
 | Property | Type | Description |
 |---|---|---|
-| `street_id` | `number` | Internal street id. |
-| `name` | `string` | Street name. |
+| `kind` | `'street' \| 'poi'` | Which kind of place matched. |
+| `street_id` | `number \| undefined` | Internal street id (`kind: 'street'`). |
+| `poi_id`, `class`, `rank` | `number`, `string`, `number` \| `undefined` | POI id, `key=value` class and prominence (lower is more prominent) (`kind: 'poi'`). |
+| `name` | `string` | Street or POI name. |
 | `city_id` | `number` | Admin id of the street's city-level area (`0` if none). |
 | `city` | `string \| null` | Name of that area. |
 | `lat`, `lon` | `number` | The house if the number was found, otherwise a point on the street's longest way. |
@@ -143,7 +147,7 @@ matches no area. Throws `CapabilityError` if the database was built with `--sear
 readonly capabilities: string[]
 ```
 
-What the database supports: some of `reverse`, `search`, `housenumber` and `interpolation`.
+What the database supports: some of `reverse`, `search`, `housenumber`, `interpolation` and `poi`.
 
 ### `geocoder.meta`
 

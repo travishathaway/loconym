@@ -11,6 +11,8 @@ from .codec import Cell, cell_key, decode_housenumbers, decode_leaf, decode_post
 from .normalize import normalize_tokens
 
 ADDR_RADIUS_M = 40.0
+POI_RADIUS_M = 50.0
+POI_PARENT = -2   # term.parent for POI postings is POI_PARENT - city
 MAX_ROWS_PER_TOKEN = 200
 MIN_PREFIX = 3
 ADMIN_KEYS = {2: "country", 3: "region", 4: "state", 5: "state_district", 6: "county", 7: "municipality",
@@ -93,7 +95,9 @@ class Loconym:
         return decode_leaf(blob, box), box
 
     # -------------------------------------------------------------- reverse
-    def reverse(self, lon, lat, zoom=18):
+    def reverse(self, lon, lat, zoom=18, *, pois=False):
+        """pois=True also reports a named POI within POI_RADIUS_M (below an exact address, above a street)."""
+        pois = pois and "poi" in self.caps and zoom >= 17
         cell, box = self.find_cell(lon, lat)
         if cell is None:
             return None
@@ -107,7 +111,13 @@ class Loconym:
                     d = math.hypot((x - lon) * cx, (y - lat) * cy)
                     if d < ADDR_RADIUS_M and (best[0] is None or best[0][0] != "addr" or d < best[1]):
                         best[0], best[1], best[2] = ("addr", sid, hn), d, (x, y)
-            if zoom >= 16 and (best[0] is None or best[0][0] != "addr"):
+            if pois and (best[0] is None or best[0][0] != "addr"):
+                for pid, x, y in c.pois:
+                    cx, cy = _m_per_deg(lat)
+                    d = math.hypot((x - lon) * cx, (y - lat) * cy)
+                    if d < POI_RADIUS_M and (best[0] is None or best[0][0] != "poi" or d < best[1]):
+                        best[0], best[1], best[2] = ("poi", pid, None), d, (x, y)
+            if zoom >= 16 and (best[0] is None or best[0][0] not in ("addr", "poi")):
                 for sid, pts in c.streets:
                     for a, b in zip(pts, pts[1:]):
                         d, qx, qy = _seg_dist(lon, lat, a, b, lat)
@@ -125,18 +135,24 @@ class Loconym:
                     n, _ = self.find_cell(lon + ox * (e + 0.5) / cx, lat + oy * (e + 0.5) / cy)
                     if n:
                         scan(n)
-        out = dict(kind=best[0][0] if best[0] else None, street=None, housenumber=None, street_id=None, admin=[],
+        out = dict(kind=best[0][0] if best[0] else None, street=None, housenumber=None, street_id=None, poi=None,
+                   admin=[],
                    lon=best[2][0] if best[2] else lon, lat=best[2][1] if best[2] else lat,
                    distance_m=round(best[1], 1) if best[0] else None)
-        if best[0]:
+        if best[0] and best[0][0] == "poi":
+            row = self.db.execute("SELECT name, class FROM poi WHERE id=?", (best[0][1],)).fetchone()
+            out["poi"] = dict(id=best[0][1], name=row[0], **{"class": row[1]}) if row else None
+        elif best[0]:
             kind, sid, hn = best[0]
             row = self.db.execute("SELECT name FROM street WHERE id=?", (sid,)).fetchone()
             out.update(street=row[0] if row else None, street_id=sid, housenumber=hn)
         rows = [self.db.execute("SELECT id,level,name,rank FROM admin WHERE id=?", (a,)).fetchone() for a in chain]
         out["admin"] = [dict(id=i, level=l, name=n, rank=r) for i, l, n, r in sorted(rows, key=lambda r: -r[1])]
-        out["place_rank"] = 30 if out["kind"] == "addr" else 26 if out["kind"] == "street" else (
+        out["place_rank"] = 30 if out["kind"] in ("addr", "poi") else 26 if out["kind"] == "street" else (
             out["admin"][0]["rank"] if out["admin"] else None)
         addr = {}
+        if out["poi"]:
+            addr[out["poi"]["class"].split("=", 1)[1]] = out["poi"]["name"]
         if out["housenumber"]:
             addr["house_number"] = out["housenumber"]
         if out["street"]:
@@ -147,6 +163,8 @@ class Loconym:
                 addr[key] = a["name"]
         out["address"] = addr
         parts = []
+        if out["poi"]:
+            parts.append(out["poi"]["name"])
         if out["street"]:
             parts.append(f"{out['street']} {out['housenumber']}" if out["housenumber"] else out["street"])
         for a in out["admin"]:
@@ -213,23 +231,58 @@ class Loconym:
                     ids |= self._postings(t, c, prefix)
             cand = ids if cand is None else cand & ids
         results = []
+        poi_cand = set()
+        if number is None and "poi" in self.caps:
+            for i, t in enumerate(stoks):
+                last = i == len(stoks) - 1
+                prefix = last and len(t) >= min_prefix
+                ids = set()
+                if cities is None:
+                    ids = self._postings_any_poi_city(t, prefix)
+                else:
+                    for c in sorted(cities):
+                        ids |= self._postings(t, POI_PARENT - c, prefix)
+                poi_cand = ids if i == 0 else poi_cand & ids
+        for pid in sorted(poi_cand)[:50]:
+            name, cls, rank, parent, lat, lon = self.db.execute(
+                "SELECT name,class,rank,parent,lat,lon FROM poi WHERE id=?", (pid,)).fetchone()
+            ntoks = normalize_tokens(name)
+            score = 10 * sum(t in ntoks for t in stoks) - abs(len(ntoks) - len(stoks))
+            results.append(dict(kind="poi", poi_id=pid, name=name, **{"class": cls}, rank=rank, city_id=parent,
+                                lat=lat / 1e6, lon=lon / 1e6, score=score))
         for sid in sorted(cand or [])[:50]:
             name, parent, lat, lon = self.db.execute(
                 "SELECT name,parent,lat,lon FROM street WHERE id=?", (sid,)).fetchone()
             ntoks = normalize_tokens(name)
             score = 10 * sum(t in ntoks for t in stoks) - abs(len(ntoks) - len(stoks))
-            hit = dict(street_id=sid, name=name, city_id=parent, lat=lat / 1e6, lon=lon / 1e6, score=score)
+            hit = dict(kind="street", street_id=sid, name=name, city_id=parent, lat=lat / 1e6, lon=lon / 1e6,
+                       score=score)
             results.append(hit)
-        results.sort(key=lambda h: (-h["score"], h["street_id"]))
+        # equal scores: more prominent POI (lower rank) first, then streets, then id
+        results.sort(key=lambda h: (-h["score"], h.get("rank", 30), h["kind"] == "street",
+                                    h.get("poi_id", h.get("street_id"))))
         results = results[:limit]
         for h in results:
             h["housenumber"] = None
-            if number:
+            if number and h["kind"] == "street":
                 self._locate(h, number)
             h["city"] = self._admin_name(h["city_id"])
             h["display_name"] = ", ".join(p for p in (
                 f"{h['name']} {h['housenumber']}" if h["housenumber"] else h["name"], h["city"]) if p)
         return results
+
+    def _postings_any_poi_city(self, token, prefix):
+        ids = set()
+        if prefix:
+            hi = token[:-1] + chr(ord(token[-1]) + 1)
+            rows = self.db.execute("SELECT postings FROM term WHERE t>=? AND t<? AND parent<=? LIMIT ?",
+                                   (token, hi, POI_PARENT, MAX_ROWS_PER_TOKEN))
+        else:
+            rows = self.db.execute("SELECT postings FROM term WHERE t=? AND parent<=? LIMIT ?",
+                                   (token, POI_PARENT, MAX_ROWS_PER_TOKEN))
+        for (b,) in rows:
+            ids.update(decode_postings(bytes(b)))
+        return ids
 
     def _postings_any_city(self, token, prefix):
         ids = set()

@@ -109,11 +109,13 @@ def _dec_coords(r: Reader, ox: float, oy: float, q: float):
 class Cell:
     """Decoded leaf. admin: [(admin_id, None | [polygon]) ], polygon = [ring], ring = [(lon, lat)]
     streets: [(street_id, [(lon, lat)])]; addrs: [(street_id, housenumber, lon, lat)];
-    interps: [(street_id, step, first, last, [(lon, lat)])]"""
+    interps: [(street_id, step, first, last, [(lon, lat)])]
+    pois: [(poi_id, lon, lat)]  (trailing section, format 0.2; omitted when empty)"""
     admin: list = field(default_factory=list)
     streets: list = field(default_factory=list)
     addrs: list = field(default_factory=list)
     interps: list = field(default_factory=list)
+    pois: list = field(default_factory=list)
 
 
 def encode_split() -> bytes:
@@ -172,6 +174,16 @@ def encode_leaf(box, cell: Cell) -> bytes:
         put_varint(out, first)
         put_varint(out, last)
         _enc_coords(out, pts, ox, oy, q)
+    if cell.pois:   # trailing section: older readers stop before it
+        put_varint(out, len(cell.pois))
+        pid = px = py = 0
+        for p, lon, lat in sorted(cell.pois):
+            put_varint(out, p - pid)
+            pid = p
+            ix, iy = round((lon - ox) / q), round((lat - oy) / q)
+            put_varint(out, zigzag(ix - px))
+            put_varint(out, zigzag(iy - py))
+            px, py = ix, iy
     return bytes(out)
 
 
@@ -204,6 +216,13 @@ def decode_leaf(blob: bytes, box) -> Cell:
     for _ in range(r.v()):
         sid, step, first, last = r.v(), r.v(), r.v(), r.v()
         c.interps.append((sid, step, first, last, _dec_coords(r, ox, oy, q)))
+    if r.more():
+        pid = px = py = 0
+        for _ in range(r.v()):
+            pid += r.v()
+            px += r.sv()
+            py += r.sv()
+            c.pois.append((pid, ox + px * q, oy + py * q))
     return c
 
 

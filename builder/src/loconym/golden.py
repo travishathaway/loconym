@@ -37,6 +37,7 @@ def _rand_cell(rng, box):
     c.addrs = [(rng.randint(1, 100000), rng.choice(["1", "12a", "7-9", "Ä3", "100", "5/2"]), *pt())
                for _ in range(rng.randint(0, 12))]
     c.interps = [(rng.randint(1, 100000), rng.choice([1, 2]), rng.randint(1, 20), rng.randint(21, 99), line(3))]
+    c.pois = [(rng.randint(1, 100000), *pt()) for _ in range(rng.randint(0, 5))]
     return c
 
 
@@ -107,6 +108,12 @@ def make(name: str, pbf: str, outdir: str, n_queries: int = 150, seed: int = 11)
         lon, lat = rng.uniform(minx, maxx), rng.uniform(miny, maxy)
         reverse.append({"lon": lon, "lat": lat, "zoom": 18, "expected": _jsonable(g.reverse(lon, lat, 18))})
     reverse.append({"lon": 0.0, "lat": 0.0, "zoom": 18, "expected": None})
+    # POI-aware reverse, at (and near) a sample of POIs
+    for _pid, lat, lon in g.db.execute("SELECT id, lat, lon FROM poi ORDER BY rank, id LIMIT 60").fetchall():
+        for dx, dy in ((0, 0), (2e-4, 1e-4)):
+            x, y = lon / 1e6 + dx, lat / 1e6 + dy
+            reverse.append({"lon": x, "lat": y, "zoom": 18, "pois": True,
+                            "expected": _jsonable(g.reverse(x, y, 18, pois=True))})
     golden["reverse"] = reverse
 
     search = []
@@ -116,6 +123,11 @@ def make(name: str, pbf: str, outdir: str, n_queries: int = 150, seed: int = 11)
         for q in (f"{nm} {h}, {city}", f"{h} {nm}", nm, f"{nm[: max(3, len(nm) // 2)]}, {city}", f"{nm.upper()} {h}, {city}"):
             search.append({"args": {"q": q, "limit": 5}, "expected": _jsonable(g.search(q, limit=5))})
         search.append({"args": {"street": nm, "city": city, "limit": 3}, "expected": _jsonable(g.search(street=nm, city=city, limit=3))})
+    # POI queries: by name, by name + city, and by a prefix
+    for _pid, nm, parent in g.db.execute("SELECT id, name, parent FROM poi ORDER BY rank, id LIMIT 60").fetchall():
+        city = cities.get(parent, "")
+        for q in (nm, f"{nm}, {city}", nm[: max(3, len(nm) // 2)]):
+            search.append({"args": {"q": q, "limit": 5}, "expected": _jsonable(g.search(q, limit=5))})
     # interpolation: interior housenumbers that have no real address
     n_interp = 0
     for sid, blob in rows:

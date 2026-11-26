@@ -41,8 +41,8 @@ from loconym.reader import Loconym
 
 g = Loconym.open("monaco.sqlite")
 
-g.meta["format_version"]        # '0.1'
-g.caps                          # {'reverse', 'search', 'housenumber', 'interpolation'}
+g.meta["format_version"]        # '0.2'
+g.caps                          # {'reverse', 'search', 'housenumber', 'interpolation', 'poi'}
 
 g.reverse(7.4246, 43.7384)      # note: lon, lat
 # {'kind': 'addr', 'street': 'Avenue des Papalins', 'housenumber': '9', ...,

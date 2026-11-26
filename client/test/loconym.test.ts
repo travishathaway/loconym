@@ -36,7 +36,7 @@ describe.each(DBS)('%s', (name) => {
         const cases = g.reverse.filter((_: unknown, i: number) => i % every === 0);
         const bad: string[] = [];
         for (const c of cases) {
-          const r = await geocoder.reverse({ lon: c.lon, lat: c.lat, zoom: c.zoom });
+          const r = await geocoder.reverse({ lon: c.lon, lat: c.lat, zoom: c.zoom, pois: c.pois ?? false });
           const errs = deepClose(r, c.expected);
           if (errs.length) bad.push(`(${c.lon},${c.lat},z${c.zoom}) ${errs[0]}`);
         }
@@ -68,7 +68,7 @@ describe('range mode traffic', () => {
     const s = g.search.slice(0, 10);
     for (const c of s) await geocoder.search(c.args);
     await geocoder.close();
-    const fileSize = 3928064;
+    const fileSize = 4513792;
     console.log(`bremen range: open=${afterOpen.bytes} B/${afterOpen.ranges} req, total=${server.stats.bytes} B / ${server.stats.ranges} range requests for 30 queries (file ${fileSize} B)`);
     expect(server.stats.bytes).toBeLessThan(fileSize * 0.6);
     expect(server.stats.ranges).toBeGreaterThan(0);

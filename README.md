@@ -90,5 +90,5 @@ the client to npm. See [Publish a release](https://travishathaway.github.io/loco
 ## Status
 
 Early. v0 format, Germany-oriented defaults (street grouping at `admin_level` 8). Measured on Monaco, Bremen and Hessen
-(see `docs/reference/spike-notes.md`). Not yet implemented: postcodes, POIs, OSM ids, non-Latin normalization, OPFS
+(see `docs/reference/spike-notes.md`). Not yet implemented: postcodes, OSM ids, POI class queries ("museum in Bremen"), non-Latin normalization, OPFS
 driver, scoring beyond token coverage. Germany-scale builds are untested (memory profile is the next task).

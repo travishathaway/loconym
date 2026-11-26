@@ -64,3 +64,19 @@ def test_postings_roundtrip():
 def test_cell_key_unique_across_zoom():
     assert cell_key(0, 0, 3) != cell_key(0, 0, 4)
     assert cell_key(5, 9, 16) > cell_key(5, 9, 15)
+
+
+def test_leaf_pois_roundtrip_and_backcompat():
+    from loconym.codec import Cell, decode_leaf, encode_leaf, tile_bounds
+
+    box = tile_bounds(34567, 21000, 16)
+    pts = [(box[0] + 1e-4, box[1] + 2e-4), (box[0] + 3e-4, box[1] + 1e-4)]
+    c = Cell(streets=[(5, [pts[0], pts[1]])], pois=[(9, *pts[1]), (2, *pts[0])])
+    out = decode_leaf(encode_leaf(box, c), box)
+    assert [p[0] for p in out.pois] == [2, 9]
+    for (_i, x, y), (ex, ey) in zip(out.pois, pts):
+        assert abs(x - ex) < 1e-6 and abs(y - ey) < 1e-6
+    # no POIs: the trailing section is omitted, so the blob equals a 0.1 leaf
+    plain = encode_leaf(box, Cell(streets=c.streets))
+    assert decode_leaf(plain, box).pois == []
+    assert len(encode_leaf(box, c)) > len(plain)
