@@ -34,8 +34,33 @@ POI_CLASSES: dict[tuple[str, str], int] = {
     ("railway", "station"): 22, ("aeroway", "aerodrome"): 20, ("aeroway", "terminal"): 24,
     # everyday named places
     ("shop", "mall"): 26, ("shop", "department_store"): 26, ("shop", "supermarket"): 28,
+    # food and drink
     ("amenity", "restaurant"): 29, ("amenity", "cafe"): 29, ("amenity", "pub"): 29,
-    ("amenity", "bar"): 29, ("amenity", "pharmacy"): 29,
+    ("amenity", "bar"): 29, ("amenity", "fast_food"): 29, ("amenity", "food_court"): 29,
+    ("amenity", "ice_cream"): 29,
+    ("amenity", "biergarten"): 29,
+    # health
+    ("amenity", "pharmacy"): 29,
+    ("amenity", "clinic"): 26, ("amenity", "doctors"): 29, ("amenity", "dentist"): 29,
+    ("amenity", "veterinary"): 29, ("amenity", "nursing_home"): 29,
+    # education (hospital, university, college, school and library are above)
+    ("amenity", "research_institute"): 26, ("amenity", "kindergarten"): 29,
+    ("amenity", "music_school"): 29, ("amenity", "language_school"): 29,
+    # culture, events and entertainment (theatre, cinema and arts_centre are above)
+    ("amenity", "conference_centre"): 24, ("amenity", "exhibition_centre"): 24, ("amenity", "planetarium"): 24,
+    ("amenity", "casino"): 26, ("amenity", "music_venue"): 26, ("amenity", "events_venue"): 27,
+    ("amenity", "nightclub"): 27, ("amenity", "community_centre"): 28,
+    # public services (townhall is above)
+    ("amenity", "courthouse"): 24, ("amenity", "police"): 27, ("amenity", "fire_station"): 27,
+    ("amenity", "prison"): 28, ("amenity", "ranger_station"): 28,
+    # transport and mobility (railway stations and aerodromes are above)
+    ("amenity", "bus_station"): 24, ("amenity", "ferry_terminal"): 24,
+    ("amenity", "fuel"): 29, ("amenity", "car_rental"): 29,
+    # money
+    ("amenity", "bank"): 29,
+    # other destinations
+    ("amenity", "monastery"): 26, ("amenity", "public_bath"): 26, ("amenity", "marketplace"): 27,
+    ("amenity", "animal_shelter"): 28,
 }
 # fmt: on
 
@@ -218,6 +243,223 @@ PHRASES: dict[str, dict[str, list[str]]] = {
     "aeroway=aerodrome": {
         "en": ["airport", "airports"], "es": ["aeropuerto", "aeropuertos"], "de": ["flughafen", "flughafen"],
         "fr": ["aeroport", "aeroports"]},
+    "aeroway=terminal": {
+        "en": ["airport terminal", "airport terminals", "terminal", "terminals"],
+        "es": ["terminal de aeropuerto", "terminales de aeropuerto", "terminal", "terminales"],
+        "de": ["flughafenterminal", "flughafenterminals", "terminal", "terminals"],
+        "fr": ["terminal d aeroport", "terminaux d aeroport", "terminal", "terminaux"]},
+    "tourism=guest_house": {
+        "en": ["guest house", "guest houses", "guesthouse", "guesthouses", "bed and breakfast", "b and b"],
+        "es": ["casa de huespedes", "casas de huespedes", "pension", "pensiones"],
+        "de": ["pension", "pensionen", "gasthaus", "gasthauser", "gastehaus", "gastehauser"],
+        "fr": ["chambre d hotes", "chambres d hotes", "maison d hotes", "maisons d hotes"]},
+    "historic=palace": {
+        "en": ["palace", "palaces"], "es": ["palacio", "palacios"], "de": ["palast", "palaste", "residenz"],
+        "fr": ["palais"]},
+    "historic=fort": {
+        "en": ["fort", "forts", "fortress", "fortresses"], "es": ["fuerte", "fuertes", "fortaleza", "fortalezas"],
+        "de": ["festung", "festungen", "fort", "forts"], "fr": ["fort", "forts", "forteresse", "forteresses"]},
+    "historic=archaeological_site": {
+        "en": ["archaeological site", "archaeological sites", "archeological site", "archeological sites"],
+        "es": ["yacimiento arqueologico", "yacimientos arqueologicos", "sitio arqueologico", "sitios arqueologicos"],
+        "de": ["ausgrabungsstatte", "ausgrabungsstatten", "archaologische statte", "archaologische statten"],
+        "fr": ["site archeologique", "sites archeologiques"]},
+    "leisure=sports_centre": {
+        "en": ["sports centre", "sports centres", "sports center", "sports centers", "leisure centre", "gym", "gyms"],
+        "es": ["centro deportivo", "centros deportivos", "gimnasio", "gimnasios"],
+        "de": ["sportzentrum", "sportzentren", "sporthalle", "sporthallen", "fitnessstudio", "fitnessstudios"],
+        "fr": ["centre sportif", "centres sportifs", "salle de sport", "salles de sport"]},
+    "natural=volcano": {
+        "en": ["volcano", "volcanoes", "volcanos"], "es": ["volcan", "volcanes"], "de": ["vulkan", "vulkane"],
+        "fr": ["volcan", "volcans"]},
+    "natural=waterfall": {
+        "en": ["waterfall", "waterfalls"], "es": ["cascada", "cascadas", "catarata", "cataratas"],
+        "de": ["wasserfall", "wasserfalle"], "fr": ["cascade", "cascades", "chute d eau", "chutes d eau"]},
+    "man_made=lighthouse": {
+        "en": ["lighthouse", "lighthouses"], "es": ["faro", "faros"], "de": ["leuchtturm", "leuchtturme"],
+        "fr": ["phare", "phares"]},
+    "man_made=tower": {
+        "en": ["tower", "towers"], "es": ["torre", "torres"], "de": ["turm", "turme"], "fr": ["tour", "tours"]},
+    "man_made=pier": {
+        "en": ["pier", "piers", "jetty", "jetties"], "es": ["muelle", "muelles", "embarcadero", "embarcaderos"],
+        "de": ["pier", "piers", "steg", "stege", "seebrucke", "seebrucken"],
+        "fr": ["jetee", "jetees", "ponton", "pontons"]},
+    # food and drink
+    "amenity=fast_food": {
+        "en": ["fast food", "fast food restaurant", "fast food restaurants", "snack bar", "snack bars", "takeaway",
+               "takeaways"],
+        "es": ["comida rapida", "restaurante de comida rapida", "restaurantes de comida rapida"],
+        "de": ["fast food", "imbiss", "imbisse", "schnellimbiss", "schnellrestaurant", "schnellrestaurants"],
+        "fr": ["fast food", "restauration rapide", "snack", "snacks"]},
+    "amenity=food_court": {
+        "en": ["food court", "food courts"], "es": ["patio de comidas", "patios de comidas"],
+        "de": ["food court", "food courts", "foodcourt", "foodcourts"],
+        "fr": ["food court", "food courts", "aire de restauration", "aires de restauration"]},
+    "amenity=ice_cream": {
+        "en": ["ice cream", "ice cream shop", "ice cream shops", "ice cream parlour", "ice cream parlor", "gelato"],
+        "es": ["heladeria", "heladerias", "helado", "helados"],
+        "de": ["eisdiele", "eisdielen", "eiscafe", "eiscafes", "eis"],
+        "fr": ["glacier", "glaciers", "glace", "glaces"]},
+    "amenity=biergarten": {
+        "en": ["beer garden", "beer gardens", "biergarten", "biergartens"],
+        "es": ["biergarten", "jardin de cerveza", "jardines de cerveza"],
+        "de": ["biergarten", "biergarten"], "fr": ["biergarten", "jardin a biere", "jardins a biere"]},
+    # health
+    "amenity=clinic": {
+        "en": ["clinic", "clinics", "medical centre", "medical centres", "medical center", "medical centers"],
+        "es": ["clinica", "clinicas", "centro medico", "centros medicos"],
+        "de": ["klinik", "kliniken", "medizinisches versorgungszentrum", "mvz"],
+        "fr": ["clinique", "cliniques", "centre medical", "centres medicaux"]},
+    "amenity=doctors": {
+        "en": ["doctor", "doctors", "doctor s office", "doctors office", "gp", "physician", "physicians"],
+        "es": ["medico", "medicos", "doctor", "doctores", "consulta medica"],
+        "de": ["arzt", "arzte", "arztpraxis", "arztpraxen", "praxis", "praxen"],
+        "fr": ["medecin", "medecins", "docteur", "docteurs", "cabinet medical", "cabinets medicaux"]},
+    "amenity=dentist": {
+        "en": ["dentist", "dentists", "dental practice", "dental practices"],
+        "es": ["dentista", "dentistas", "clinica dental", "clinicas dentales"],
+        "de": ["zahnarzt", "zahnarzte", "zahnarztpraxis", "zahnarztpraxen"],
+        "fr": ["dentiste", "dentistes", "cabinet dentaire", "cabinets dentaires"]},
+    "amenity=veterinary": {
+        "en": ["vet", "vets", "veterinary", "veterinarian", "veterinarians", "animal hospital"],
+        "es": ["veterinario", "veterinarios", "clinica veterinaria", "clinicas veterinarias"],
+        "de": ["tierarzt", "tierarzte", "tierarztpraxis", "tierarztpraxen", "tierklinik", "tierkliniken"],
+        "fr": ["veterinaire", "veterinaires", "clinique veterinaire", "cliniques veterinaires"]},
+    "amenity=nursing_home": {
+        "en": ["nursing home", "nursing homes", "care home", "care homes"],
+        "es": ["residencia de ancianos", "residencias de ancianos", "residencia de mayores"],
+        "de": ["pflegeheim", "pflegeheime", "altenheim", "altenheime", "seniorenheim", "seniorenheime"],
+        "fr": ["maison de retraite", "maisons de retraite", "ehpad"]},
+    # education
+    "amenity=research_institute": {
+        "en": ["research institute", "research institutes"],
+        "es": ["instituto de investigacion", "institutos de investigacion"],
+        "de": ["forschungsinstitut", "forschungsinstitute"],
+        "fr": ["institut de recherche", "instituts de recherche"]},
+    "amenity=kindergarten": {
+        "en": ["kindergarten", "kindergartens", "nursery", "nurseries", "preschool", "preschools", "daycare",
+               "day care"],
+        "es": ["guarderia", "guarderias", "jardin de infancia", "jardines de infancia", "jardin de ninos"],
+        "de": ["kindergarten", "kindergarten", "kita", "kitas", "kindertagesstatte", "kindertagesstatten"],
+        "fr": ["ecole maternelle", "ecoles maternelles", "creche", "creches", "jardin d enfants"]},
+    "amenity=music_school": {
+        "en": ["music school", "music schools"], "es": ["escuela de musica", "escuelas de musica", "conservatorio"],
+        "de": ["musikschule", "musikschulen", "konservatorium"],
+        "fr": ["ecole de musique", "ecoles de musique", "conservatoire", "conservatoires"]},
+    "amenity=language_school": {
+        "en": ["language school", "language schools"],
+        "es": ["escuela de idiomas", "escuelas de idiomas", "academia de idiomas"],
+        "de": ["sprachschule", "sprachschulen"], "fr": ["ecole de langues", "ecoles de langues"]},
+    # culture, events and entertainment
+    "amenity=conference_centre": {
+        "en": ["conference centre", "conference centres", "conference center", "conference centers",
+               "convention centre", "convention center"],
+        "es": ["centro de conferencias", "centros de conferencias", "centro de congresos", "centros de congresos",
+               "palacio de congresos"],
+        "de": ["kongresszentrum", "kongresszentren", "tagungszentrum", "tagungszentren", "kongresshalle"],
+        "fr": ["centre de congres", "centres de congres", "palais des congres", "centre de conferences"]},
+    "amenity=exhibition_centre": {
+        "en": ["exhibition centre", "exhibition centres", "exhibition center", "exhibition centers",
+               "exhibition hall", "exhibition halls", "fairground", "fairgrounds"],
+        "es": ["centro de exposiciones", "centros de exposiciones", "recinto ferial", "recintos feriales"],
+        "de": ["messe", "messen", "messegelande", "ausstellungszentrum", "ausstellungszentren"],
+        "fr": ["centre d exposition", "centres d exposition", "parc des expositions", "palais des expositions"]},
+    "amenity=planetarium": {
+        "en": ["planetarium", "planetariums", "planetaria"], "es": ["planetario", "planetarios"],
+        "de": ["planetarium", "planetarien"], "fr": ["planetarium", "planetariums"]},
+    "amenity=casino": {
+        "en": ["casino", "casinos"], "es": ["casino", "casinos"],
+        "de": ["casino", "casinos", "spielbank", "spielbanken"], "fr": ["casino", "casinos"]},
+    "amenity=music_venue": {
+        "en": ["music venue", "music venues", "live music", "concert hall", "concert halls"],
+        "es": ["sala de conciertos", "salas de conciertos", "sala de musica en vivo"],
+        "de": ["konzerthalle", "konzerthallen", "konzertsaal", "livemusik", "musikclub", "musikclubs"],
+        "fr": ["salle de concert", "salles de concert", "salle de spectacle", "salles de spectacle"]},
+    "amenity=events_venue": {
+        "en": ["event venue", "event venues", "events venue", "events venues", "function room", "banquet hall"],
+        "es": ["salon de eventos", "salones de eventos", "local de eventos", "locales de eventos"],
+        "de": ["veranstaltungsort", "veranstaltungsorte", "eventlocation", "eventlocations", "festsaal", "festsale"],
+        "fr": ["salle des fetes", "salle de reception", "salles de reception", "lieu d evenements"]},
+    "amenity=nightclub": {
+        "en": ["nightclub", "nightclubs", "night club", "night clubs", "disco", "discos"],
+        "es": ["club nocturno", "clubes nocturnos", "discoteca", "discotecas"],
+        "de": ["nachtclub", "nachtclubs", "diskothek", "diskotheken", "disco", "discos"],
+        "fr": ["boite de nuit", "boites de nuit", "discotheque", "discotheques"]},
+    "amenity=community_centre": {
+        "en": ["community centre", "community centres", "community center", "community centers"],
+        "es": ["centro comunitario", "centros comunitarios", "centro civico", "centros civicos"],
+        "de": ["gemeindezentrum", "gemeindezentren", "burgerhaus", "burgerhauser", "stadtteilzentrum",
+               "nachbarschaftszentrum"],
+        "fr": ["centre communautaire", "centres communautaires", "maison de quartier", "maisons de quartier"]},
+    # public services
+    "amenity=courthouse": {
+        "en": ["courthouse", "courthouses", "court", "courts", "law court", "law courts"],
+        "es": ["juzgado", "juzgados", "tribunal", "tribunales"],
+        "de": ["gericht", "gerichte", "amtsgericht", "landgericht"],
+        "fr": ["tribunal", "tribunaux", "palais de justice"]},
+    "amenity=police": {
+        "en": ["police", "police station", "police stations"],
+        "es": ["policia", "comisaria", "comisarias", "comisaria de policia"],
+        "de": ["polizei", "polizeiwache", "polizeiwachen", "polizeistation", "polizeirevier"],
+        "fr": ["police", "commissariat", "commissariats", "gendarmerie", "gendarmeries"]},
+    "amenity=fire_station": {
+        "en": ["fire station", "fire stations", "fire department", "fire brigade"],
+        "es": ["estacion de bomberos", "estaciones de bomberos", "parque de bomberos", "bomberos"],
+        "de": ["feuerwehr", "feuerwehren", "feuerwache", "feuerwachen"],
+        "fr": ["caserne de pompiers", "casernes de pompiers", "pompiers"]},
+    "amenity=prison": {
+        "en": ["prison", "prisons", "jail", "jails"], "es": ["prision", "prisiones", "carcel", "carceles"],
+        "de": ["gefangnis", "gefangnisse", "justizvollzugsanstalt", "jva"], "fr": ["prison", "prisons"]},
+    "amenity=ranger_station": {
+        "en": ["ranger station", "ranger stations", "visitor station", "visitor stations"],
+        "es": ["estacion de guardabosques", "estaciones de guardabosques", "puesto de guardaparques"],
+        "de": ["rangerstation", "rangerstationen", "nationalparkhaus", "nationalparkhauser"],
+        "fr": ["maison du parc", "maisons du parc", "poste de garde forestier"]},
+    # transport and mobility
+    "amenity=bus_station": {
+        "en": ["bus station", "bus stations", "coach station", "coach stations", "bus terminal", "bus terminals"],
+        "es": ["estacion de autobuses", "estaciones de autobuses", "terminal de autobuses", "estacion de buses"],
+        "de": ["busbahnhof", "busbahnhofe", "omnibusbahnhof", "zob"],
+        "fr": ["gare routiere", "gares routieres"]},
+    "amenity=ferry_terminal": {
+        "en": ["ferry terminal", "ferry terminals", "ferry port", "ferry ports"],
+        "es": ["terminal de ferris", "terminales de ferris", "terminal de transbordadores"],
+        "de": ["fahrhafen", "fahranleger", "fahrterminal", "fahrterminals"],
+        "fr": ["terminal de ferry", "terminaux de ferry", "gare maritime", "gares maritimes"]},
+    "amenity=fuel": {
+        "en": ["gas station", "gas stations", "petrol station", "petrol stations", "filling station",
+               "filling stations", "fuel station", "fuel stations"],
+        "es": ["gasolinera", "gasolineras", "estacion de servicio", "estaciones de servicio"],
+        "de": ["tankstelle", "tankstellen"],
+        "fr": ["station service", "stations service", "station essence", "stations essence"]},
+    "amenity=car_rental": {
+        "en": ["car rental", "car rentals", "car hire", "rental car", "rental cars"],
+        "es": ["alquiler de coches", "alquiler de autos", "alquiler de vehiculos", "alquiler de carros"],
+        "de": ["autovermietung", "autovermietungen", "mietwagen"],
+        "fr": ["location de voitures", "location de voiture", "loueur de voitures"]},
+    # money
+    "amenity=bank": {
+        "en": ["bank", "banks"], "es": ["banco", "bancos"], "de": ["bank", "banken"], "fr": ["banque", "banques"]},
+    # other destinations
+    "amenity=monastery": {
+        "en": ["monastery", "monasteries", "abbey", "abbeys", "convent", "convents"],
+        "es": ["monasterio", "monasterios", "abadia", "abadias", "convento", "conventos"],
+        "de": ["kloster", "kloster", "abtei", "abteien"],
+        "fr": ["monastere", "monasteres", "abbaye", "abbayes", "couvent", "couvents"]},
+    "amenity=public_bath": {
+        "en": ["public bath", "public baths", "thermal bath", "thermal baths", "spa", "spas"],
+        "es": ["banos publicos", "balneario", "balnearios", "termas"],
+        "de": ["therme", "thermen", "thermalbad", "thermalbader", "kurbad", "kurbader"],
+        "fr": ["bains publics", "thermes", "bain thermal", "bains thermaux", "spa", "spas"]},
+    "amenity=marketplace": {
+        "en": ["market", "markets", "marketplace", "marketplaces", "farmers market", "farmers markets"],
+        "es": ["mercado", "mercados", "mercadillo", "mercadillos"],
+        "de": ["markt", "markte", "wochenmarkt", "wochenmarkte", "marktplatz", "marktplatze"],
+        "fr": ["marche", "marches", "marche couvert", "marches couverts"]},
+    "amenity=animal_shelter": {
+        "en": ["animal shelter", "animal shelters", "pet shelter", "dog pound"],
+        "es": ["refugio de animales", "refugios de animales", "protectora de animales"],
+        "de": ["tierheim", "tierheime"], "fr": ["refuge pour animaux", "refuges pour animaux"]},
 }
 
 # Words between the phrase and the place ("museums IN Bremen"), already normalized, longest first.

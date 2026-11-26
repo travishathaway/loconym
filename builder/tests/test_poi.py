@@ -83,3 +83,27 @@ def test_snap_pois(tmp_path):
         (13, 9, 8.0, 53.0),           # other root tile: nothing there
     ]
     assert snap_pois(db, names, pois) == {10: ("Dammweg", "12"), 11: ("Hauptstrasse", None)}
+
+
+def test_every_poi_class_has_phrases():
+    """A class without phrases can't be found by "<category> in <city>"; add them in all four languages."""
+    from loconym.poi import PHRASES, POI_CLASSES
+
+    missing = sorted(f"{k}={v}" for k, v in POI_CLASSES if f"{k}={v}" not in PHRASES)
+    assert not missing, missing
+    for cls, langs in PHRASES.items():
+        for lang, words in langs.items():
+            assert words, (cls, lang)
+
+
+def test_new_phrases_resolve():
+    from loconym.poi import phrase_rows
+
+    rows = set(phrase_rows())
+    for token, cls in [("dentists", "amenity=dentist"), ("zahnarzt", "amenity=dentist"), ("bancos", "amenity=bank"),
+                       ("tankstellen", "amenity=fuel"), ("station service", "amenity=fuel"),
+                       ("kindergartens", "amenity=kindergarten"), ("kitas", "amenity=kindergarten"),
+                       ("wochenmarkt", "amenity=marketplace"), ("gares routieres", "amenity=bus_station"),
+                       ("leuchtturm", "man_made=lighthouse"), ("eisdiele", "amenity=ice_cream"),
+                       ("polizeiwache", "amenity=police"), ("bomberos", "amenity=fire_station")]:
+        assert (token, cls) in rows, (token, cls)
