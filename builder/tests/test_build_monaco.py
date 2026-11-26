@@ -71,7 +71,7 @@ def test_search_housenumber_located(db):
     name = g.db.execute("SELECT name FROM street WHERE id=?", (sid,)).fetchone()[0]
     hn, lon, lat = decode_housenumbers(bytes(blob)).addrs[0]
     res = g.search(f"{name} {hn}")
-    hit = next(h for h in res if h["street_id"] == sid)
+    hit = next(h for h in res if h.get("street_id") == sid)
     assert abs(hit["lon"] - lon) < 1e-6 and abs(hit["lat"] - lat) < 1e-6 and hit["housenumber"] == hn
 
 
